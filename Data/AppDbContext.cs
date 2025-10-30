@@ -16,6 +16,18 @@ namespace MyApp.Data
     {
       base.OnModelCreating(modelBuilder);
 
+      // Seed test players
+      modelBuilder.Entity<Player>().HasData(
+        new Player { Id = 1, Name = "Patrick Connolly", Email = "patrick@example.com" },
+        new Player { Id = 2, Name = "Jordan Smith", Email = "jordan@example.com" }
+      );
+
+      // Seed test rounds
+      modelBuilder.Entity<Round>().HasData(
+        new Round { Id = 1, Date = DateTime.Today.AddDays(3), Course = "Pebble Beach", Notes = "Morning tee time" },
+        new Round { Id = 2, Date = DateTime.Today.AddDays(10), Course = "Augusta National", Notes = "Afternoon round" }
+      );
+
       // Relationships
       modelBuilder.Entity<Entry>()
           .HasOne(e => e.Player)

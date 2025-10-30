@@ -1,10 +1,124 @@
 ﻿@page
 @model IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "Upcoming Golf Rounds";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<h1 class="mb-3">Upcoming Rounds</h1>
+
+@if (!Model.UpcomingRounds.Any())
+{
+    <p>No upcoming rounds yet. <a asp-page="/Rounds/Create">Add one</a>.</p>
+}
+else
+{
+    @foreach (var round in Model.UpcomingRounds)
+    {
+        // Separate active entries and waitlist entries
+        var activeEntries = round.Entries?
+        .Where(e =>
+        !e.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase) &&
+        (e.Status != "Maybe" || (e.ExpiresAt ?? DateTime.MaxValue) > DateTime.UtcNow))
+        .ToList() ?? new List<MyApp.Models.Entry>();
+
+        var waitlistEntries = round.Entries?
+        .Where(e => e.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
+        .ToList() ?? new List<MyApp.Models.Entry>();
+
+        int totalPlayers = activeEntries.Sum(e => 1 + (e.Guests ?? 0));
+
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-success text-white d-flex justify-content-between">
+                <div>
+                    <strong>@round.Course</strong> — @round.Date.ToString("dddd, MMM d, yyyy h:mm tt")
+                </div>
+                <div>
+                    @totalPlayers player(s) signed up
+                </div>
+            </div>
+
+            <div class="card-body">
+                <p>@round.Notes</p>
+
+                @if (activeEntries.Any())
+                {
+                    <table class="table table-sm table-striped mb-3">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Player</th>
+                                <th>Guests</th>
+                                <th>Status</th>
+                                <th>Expires At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var entry in activeEntries)
+                            {
+                                <tr>
+                                    <td>@entry.Player?.Name</td>
+                                    <td>@entry.Guests</td>
+                                    <td>@entry.Status</td>
+                                    <td>
+                                        @if (entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase) &&
+                                                                entry.ExpiresAt.HasValue)
+                                        {
+                                            @entry.ExpiresAt.Value.ToLocalTime().ToString("g")
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p>No active players have joined yet.</p>
+                }
+
+                @* --- WAITLIST SECTION --- *@
+                @if (waitlistEntries.Any())
+                {
+                    <div class="mt-4 p-3 border-top">
+                        <h6 class="text-muted mb-2">Waitlist</h6>
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Player</th>
+                                    <th>Guests</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in waitlistEntries)
+                                {
+                                    <tr>
+                                        <td>@entry.Player?.Name</td>
+                                        <td>@entry.Guests</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                @if (totalPlayers < 4)
+                {
+                    <a asp-page="/Entries/Create" asp-route-roundId="@round.Id" asp-route-status="Confirmed"
+                        class="btn btn-primary btn-sm mt-2">
+                        Join Round
+                    </a>
+                }
+                else
+                {
+                    <a asp-page="/Entries/Create" asp-route-roundId="@round.Id" asp-route-status="Waitlist"
+                        class="btn btn-warning btn-sm mt-2">
+                        Join Waitlist
+                    </a>
+                }
+            </div>
+        </div>
+    }
+}

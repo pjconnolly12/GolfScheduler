@@ -1,49 +1,90 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using MyApp.Data;
 using MyApp.Models;
 
-public class CreateModel : PageModel
+namespace MyApp.Pages.Entries
 {
-  private readonly AppDbContext _context;
-
-  public CreateModel(AppDbContext context)
+  public class CreateModel : PageModel
   {
-    _context = context;
-  }
+    private readonly AppDbContext _context;
 
-  [BindProperty]
-  public Entry Entry { get; set; } = new();
-
-  public SelectList Players { get; set; } = default!;
-  public SelectList Rounds { get; set; } = default!;
-
-  public async Task OnGetAsync()
-  {
-    Players = new SelectList(await _context.Players.ToListAsync(), "Id", "Name");
-    Rounds = new SelectList(await _context.Rounds.ToListAsync(), "Id", "Course");
-  }
-
-  public async Task<IActionResult> OnPostAsync()
-  {
-    if (!ModelState.IsValid)
+    public CreateModel(AppDbContext context)
     {
-      Players = new SelectList(await _context.Players.ToListAsync(), "Id", "Name");
-      Rounds = new SelectList(await _context.Rounds.ToListAsync(), "Id", "Course");
+      _context = context;
+    }
+
+    [BindProperty]
+    public Entry Entry { get; set; } = default!;
+
+    public Round? SelectedRound { get; set; }
+
+    public List<Player> Players { get; set; } = new();
+
+    public async Task<IActionResult> OnGetAsync(int? roundId, string? status = null)
+    {
+      if (roundId == null)
+      {
+        return RedirectToPage("/Index"); // no round selected
+      }
+
+      SelectedRound = await _context.Rounds.FirstOrDefaultAsync(r => r.Id == roundId);
+
+      if (SelectedRound == null)
+      {
+        return NotFound();
+      }
+
+      Players = await _context.Players
+          .OrderBy(p => p.Name)
+          .ToListAsync();
+
+      Entry = new Entry
+      {
+        RoundId = roundId.Value,
+        Status = status ?? "Confirmed"
+      };
+
       return Page();
     }
 
-    // Validate Guests <= 2
-    if (Entry.Guests.HasValue && Entry.Guests > 2)
+    public async Task<IActionResult> OnPostAsync()
     {
-      ModelState.AddModelError("Entry.Guests", "You can bring a maximum of 2 guests.");
-      return Page();
-    }
+      Entry.CreatedAt = DateTime.UtcNow;
 
-    _context.Entries.Add(Entry);
-    await _context.SaveChangesAsync();
-    return RedirectToPage("/Entries/Index");
+      // Handle expiration logic
+      if (Entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase))
+      {
+        Entry.ExpiresAt = Entry.CreatedAt.AddHours(36);
+      }
+      else
+      {
+        // Waitlist and Confirmed entries never expire
+        Entry.ExpiresAt = null;
+      }
+
+      _context.Entries.Add(Entry);
+
+      // Find related round
+      var round = await _context.Rounds.FindAsync(Entry.RoundId);
+      if (round != null)
+      {
+        // Only update player count if not Waitlist
+        if (!Entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
+        {
+          int totalToAdd = 1 + (Entry.Guests ?? 0);
+          round.Golfers += totalToAdd;
+
+          _context.Rounds.Update(round);
+        }
+      }
+
+      await _context.SaveChangesAsync();
+      return RedirectToPage("/Index");
+    }
   }
 }

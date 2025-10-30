@@ -1,5 +1,6 @@
 @page
-@model CreateModel
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model MyApp.Pages.Entries.CreateModel
 @{
   ViewData["Title"] = "Add Entry";
 }
@@ -8,16 +9,24 @@
 
 <form method="post">
   <div class="form-group">
-    <label asp-for="Entry.PlayerId">Player</label>
-    <select asp-for="Entry.PlayerId" class="form-control" asp-items="Model.Players">
-      <option value="">-- Select Player --</option>
-    </select>
+    @if (Model.SelectedRound != null)
+    {
+        <p class="form-control-plaintext">
+            @Model.SelectedRound.Course - @Model.SelectedRound.Date.ToString("dddd, MMM d, yyyy h:mm tt")
+        </p>
+        <input type="hidden" asp-for="Entry.RoundId" value="@Model.SelectedRound.Id" />
+    }
+    else
+    {
+        <p class="text-danger">No round selected.</p>
+    }
   </div>
 
   <div class="form-group">
-    <label asp-for="Entry.RoundId">Round</label>
-    <select asp-for="Entry.RoundId" class="form-control" asp-items="Model.Rounds">
-      <option value="">-- Select Round --</option>
+    <label asp-for="Entry.PlayerId">Player</label>
+    <select asp-for="Entry.PlayerId" class="form-select"
+        asp-items="@(new SelectList(Model.Players, "Id", "Name"))">
+      <option value="">-- Select Player --</option>
     </select>
   </div>
 

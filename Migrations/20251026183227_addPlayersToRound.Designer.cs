@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyApp.Data;
 
@@ -11,9 +12,11 @@ using MyApp.Data;
 namespace GolfScheduler.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251026183227_addPlayersToRound")]
+    partial class addPlayersToRound
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,7 +36,7 @@ namespace GolfScheduler.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("ExpiresAt")
+                    b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int?>("Guests")
@@ -110,11 +113,11 @@ namespace GolfScheduler.Migrations
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("Golfers")
-                        .HasColumnType("int");
-
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Players")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -125,17 +128,17 @@ namespace GolfScheduler.Migrations
                         {
                             Id = 1,
                             Course = "Pebble Beach",
-                            Date = new DateTime(2025, 11, 1, 0, 0, 0, 0, DateTimeKind.Local),
-                            Golfers = 1,
-                            Notes = "Morning tee time"
+                            Date = new DateTime(2025, 10, 29, 0, 0, 0, 0, DateTimeKind.Local),
+                            Notes = "Morning tee time",
+                            Players = 1
                         },
                         new
                         {
                             Id = 2,
                             Course = "Augusta National",
-                            Date = new DateTime(2025, 11, 8, 0, 0, 0, 0, DateTimeKind.Local),
-                            Golfers = 1,
-                            Notes = "Afternoon round"
+                            Date = new DateTime(2025, 11, 5, 0, 0, 0, 0, DateTimeKind.Local),
+                            Notes = "Afternoon round",
+                            Players = 1
                         });
                 });
 

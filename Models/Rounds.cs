@@ -6,6 +6,7 @@ namespace MyApp.Models
     public DateTime Date { get; set; }
     public string Course { get; set; } = string.Empty;
     public string? Notes { get; set; }
+    public int Golfers { get; set; } = 1;
 
     // Navigation property — a round can have many entries
     public List<Entry> Entries { get; set; } = new();

@@ -1,19 +1,26 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-
-namespace GolfScheduler.Pages;
-
+using Microsoft.EntityFrameworkCore;
+using MyApp.Data;
+using MyApp.Models;
 public class IndexModel : PageModel
 {
-    private readonly ILogger<IndexModel> _logger;
+    private readonly AppDbContext _context;
 
-    public IndexModel(ILogger<IndexModel> logger)
+    public IndexModel(AppDbContext context)
     {
-        _logger = logger;
+        _context = context;
     }
 
-    public void OnGet()
-    {
+    public List<Round> UpcomingRounds { get; set; } = new();
 
+    public async Task OnGetAsync()
+    {
+        UpcomingRounds = await _context.Rounds
+            .Where(r => r.Date >= DateTime.Today)
+            .OrderBy(r => r.Date)
+            .Include(r => r.Entries)
+                .ThenInclude(e => e.Player)
+            .ToListAsync();
     }
 }
+
