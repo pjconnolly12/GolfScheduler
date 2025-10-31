@@ -11,32 +11,42 @@
   <div class="form-group">
     @if (Model.SelectedRound != null)
     {
-        <p class="form-control-plaintext">
-            @Model.SelectedRound.Course - @Model.SelectedRound.Date.ToString("dddd, MMM d, yyyy h:mm tt")
-        </p>
-        <input type="hidden" asp-for="Entry.RoundId" value="@Model.SelectedRound.Id" />
+      <p class="form-control-plaintext">
+        @Model.SelectedRound.Course - @Model.SelectedRound.Date.ToString("dddd, MMM d, yyyy h:mm tt")
+      </p>
+      <input type="hidden" asp-for="Entry.RoundId" value="@Model.SelectedRound.Id" />
     }
     else
     {
-        <p class="text-danger">No round selected.</p>
+      <p class="text-danger">No round selected.</p>
     }
   </div>
 
   <div class="form-group">
     <label asp-for="Entry.PlayerId">Player</label>
-    <select asp-for="Entry.PlayerId" class="form-select"
-        asp-items="@(new SelectList(Model.Players, "Id", "Name"))">
+    <select asp-for="Entry.PlayerId" class="form-select" asp-items="@(new SelectList(Model.Players, "Id", "Name"))">
       <option value="">-- Select Player --</option>
     </select>
   </div>
 
-  <div class="form-group">
-    <label asp-for="Entry.Status">Status</label>
-    <select asp-for="Entry.Status" class="form-control">
-      <option>Confirmed</option>
-      <option>Maybe</option>
-    </select>
-  </div>
+  @if (Model.Entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
+  {
+    <!-- Hidden field so it posts the value but can't be changed -->
+    <input type="hidden" asp-for="Entry.Status" />
+    <div class="alert alert-warning mt-3">
+      This round is full — you are joining the <strong>Waitlist</strong>.
+    </div>
+  }
+  else
+  {
+    <div class="form-group">
+      <label asp-for="Entry.Status">Status</label>
+      <select asp-for="Entry.Status" class="form-control">
+        <option value="Confirmed">Confirmed</option>
+        <option value="Maybe">Maybe</option>
+      </select>
+    </div>
+  }
 
   <div class="form-group">
     <label asp-for="Entry.Guests">Guests (0–2)</label>

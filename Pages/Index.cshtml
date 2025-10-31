@@ -56,7 +56,14 @@ else
                             {
                                 <tr>
                                     <td>@entry.Player?.Name</td>
-                                    <td>@entry.Guests</td>
+                                    <td>
+                                        <form method="post" asp-page="/Entries/Create" asp-page-handler="UpdateGuests" class="d-inline">
+                                            <input type="hidden" name="entryId" value="@entry.Id" />
+                                            <input type="number" name="newGuests" value="@(entry.Guests ?? 0)" min="0" max="2"
+                                                class="form-control form-control-sm d-inline w-auto" />
+                                            <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                                        </form>
+                                    </td>
                                     <td>@entry.Status</td>
                                     <td>
                                         @if (entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase) &&
@@ -68,6 +75,12 @@ else
                                         {
                                             <span>-</span>
                                         }
+                                    </td>
+                                    <td>
+                                        <form method="post" asp-page="/Entries/Create" asp-page-handler="Remove" class="d-inline">
+                                            <input type="hidden" name="entryId" value="@entry.Id" />
+                                            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                        </form>
                                     </td>
                                 </tr>
                             }
