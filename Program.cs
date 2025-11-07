@@ -8,6 +8,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+builder.Services.AddHostedService<MyApp.Services.EmailRoundWatcher>();
 
 var app = builder.Build();
 
