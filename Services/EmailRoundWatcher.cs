@@ -55,7 +55,7 @@ namespace MyApp.Services
       var emails = await FetchNewEmailsAsync();
 
       using var scope = _services.CreateScope();
-      var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+      var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
       foreach (var email in emails)
       {

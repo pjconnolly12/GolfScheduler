@@ -4,9 +4,9 @@ using MyApp.Data;
 using MyApp.Models;
 public class IndexModel : PageModel
 {
-    private readonly AppDbContext _context;
+    private readonly ApplicationDbContext _context;
 
-    public IndexModel(AppDbContext context)
+    public IndexModel(ApplicationDbContext context)
     {
         _context = context;
     }
