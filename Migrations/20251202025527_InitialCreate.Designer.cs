@@ -12,7 +12,7 @@ using MyApp.Data;
 namespace GolfScheduler.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251127022836_InitialCreate")]
+    [Migration("20251202025527_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -204,9 +204,6 @@ namespace GolfScheduler.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("PlayerId")
-                        .HasColumnType("int");
-
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
@@ -226,8 +223,6 @@ namespace GolfScheduler.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex")
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
-
-                    b.HasIndex("PlayerId");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
@@ -252,8 +247,8 @@ namespace GolfScheduler.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("PlayerId")
-                        .HasColumnType("int");
+                    b.Property<string>("PlayerId")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("RoundId")
                         .HasColumnType("int");
@@ -273,11 +268,8 @@ namespace GolfScheduler.Migrations
 
             modelBuilder.Entity("MyApp.Models.Player", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
@@ -286,23 +278,15 @@ namespace GolfScheduler.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
 
-                    b.ToTable("Players");
+                    b.HasIndex("UserId");
 
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Email = "patrick@example.com",
-                            Name = "Patrick Connolly"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Email = "jordan@example.com",
-                            Name = "Jordan Smith"
-                        });
+                    b.ToTable("Players");
                 });
 
             modelBuilder.Entity("MyApp.Models.Round", b =>
@@ -326,6 +310,10 @@ namespace GolfScheduler.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Organizer")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
 
                     b.ToTable("Rounds");
@@ -335,17 +323,19 @@ namespace GolfScheduler.Migrations
                         {
                             Id = 1,
                             Course = "Pebble Beach",
-                            Date = new DateTime(2025, 11, 29, 0, 0, 0, 0, DateTimeKind.Local),
+                            Date = new DateTime(2025, 12, 4, 0, 0, 0, 0, DateTimeKind.Local),
                             Golfers = 1,
-                            Notes = "Morning tee time"
+                            Notes = "Morning tee time",
+                            Organizer = ""
                         },
                         new
                         {
                             Id = 2,
                             Course = "Augusta National",
-                            Date = new DateTime(2025, 12, 6, 0, 0, 0, 0, DateTimeKind.Local),
+                            Date = new DateTime(2025, 12, 11, 0, 0, 0, 0, DateTimeKind.Local),
                             Golfers = 1,
-                            Notes = "Afternoon round"
+                            Notes = "Afternoon round",
+                            Organizer = ""
                         });
                 });
 
@@ -404,8 +394,9 @@ namespace GolfScheduler.Migrations
                 {
                     b.HasOne("MyApp.Models.Player", "Player")
                         .WithMany()
-                        .HasForeignKey("PlayerId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Player");
                 });
@@ -414,9 +405,7 @@ namespace GolfScheduler.Migrations
                 {
                     b.HasOne("MyApp.Models.Player", "Player")
                         .WithMany("Entries")
-                        .HasForeignKey("PlayerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("PlayerId");
 
                     b.HasOne("MyApp.Models.Round", "Round")
                         .WithMany("Entries")
@@ -427,6 +416,17 @@ namespace GolfScheduler.Migrations
                     b.Navigation("Player");
 
                     b.Navigation("Round");
+                });
+
+            modelBuilder.Entity("MyApp.Models.Player", b =>
+                {
+                    b.HasOne("MyApp.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MyApp.Models.Player", b =>

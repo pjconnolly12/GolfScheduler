@@ -6,7 +6,7 @@ namespace MyApp.Models
 
     // Foreign keys
     public int RoundId { get; set; }
-    public int PlayerId { get; set; }
+    public string? PlayerId { get; set; }
 
     // Navigation properties
     public Round Round { get; set; } = default!;

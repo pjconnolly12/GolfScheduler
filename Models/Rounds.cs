@@ -7,6 +7,7 @@ namespace MyApp.Models
     public string Course { get; set; } = string.Empty;
     public string? Notes { get; set; }
     public int Golfers { get; set; } = 1;
+    public string Organizer { get; set; } = string.Empty;
 
     // Navigation property — a round can have many entries
     public List<Entry> Entries { get; set; } = new();

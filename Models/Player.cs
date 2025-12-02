@@ -1,12 +1,14 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace MyApp.Models
 {
   public class Player
   {
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Email { get; set; }
+    public string Id { get; set; } = Guid.NewGuid().ToString(); // PK
+    public string UserId { get; set; }  // link to ApplicationUser.Id
+    public string Name { get; set; } = "";
+    public string Email { get; set; } = "";
 
-    // Navigation property — one player can have many entries
-    public List<Entry> Entries { get; set; } = new();
+    public virtual ICollection<Entry> Entries { get; set; } = new List<Entry>();
   }
 }

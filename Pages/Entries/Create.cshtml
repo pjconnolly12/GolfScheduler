@@ -22,13 +22,6 @@
     }
   </div>
 
-  <div class="form-group">
-    <label asp-for="Entry.PlayerId">Player</label>
-    <select asp-for="Entry.PlayerId" class="form-select" asp-items="@(new SelectList(Model.Players, "Id", "Name"))">
-      <option value="">-- Select Player --</option>
-    </select>
-  </div>
-
   @if (Model.Entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
   {
     <!-- Hidden field so it posts the value but can't be changed -->
@@ -40,7 +33,7 @@
   else
   {
     <div class="form-group">
-      <label asp-for="Entry.Status">Status</label>
+      <label asp-for="Entry.Status">Status (Selecting "Maybe" will allow you to save this spot for 24 hours) </label>
       <select asp-for="Entry.Status" class="form-control">
         <option value="Confirmed">Confirmed</option>
         <option value="Maybe">Maybe</option>

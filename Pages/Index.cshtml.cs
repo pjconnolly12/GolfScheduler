@@ -2,19 +2,38 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using MyApp.Data;
 using MyApp.Models;
+using Microsoft.AspNetCore.Identity;
+
 public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _context;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public IndexModel(ApplicationDbContext context)
+    public IndexModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
     {
         _context = context;
+        _userManager = userManager;
     }
 
     public List<Round> UpcomingRounds { get; set; } = new();
 
+    public string? CurrentPlayerId { get; set; }
+
     public async Task OnGetAsync()
     {
+        // -----------------------------
+        // 🔥 Load current logged-in player
+        // -----------------------------
+        var user = await _userManager.GetUserAsync(User);
+
+        if (user != null)
+        {
+            var player = await _context.Players
+                .FirstOrDefaultAsync(p => p.Id == user.Id);
+
+            CurrentPlayerId = player?.Id.ToString();
+        }
+
         // --- 1. Remove expired entries ---
         var expiredEntries = await _context.Entries
             .Where(e => e.Status == "Maybe" && e.ExpiresAt <= DateTime.UtcNow)
@@ -26,19 +45,18 @@ public class IndexModel : PageModel
         }
 
         var upcomingRounds = await _context.Rounds
-    .Include(r => r.Entries)
-    .Where(r => r.Date >= DateTime.UtcNow)
-    .ToListAsync();
+            .Include(r => r.Entries)
+            .Where(r => r.Date >= DateTime.UtcNow)
+            .ToListAsync();
 
         foreach (var round in upcomingRounds)
         {
-            // Count confirmed/maybe players
             int currentPlayers = round.Entries
                 .Where(e => !e.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase) &&
                             (e.Status != "Maybe" || (e.ExpiresAt ?? DateTime.MaxValue) > DateTime.UtcNow))
                 .Sum(e => 1 + (e.Guests ?? 0));
 
-            // Promote waitlist if there is space
+            // Promote waitlist entries
             while (currentPlayers < 4)
             {
                 var nextWaitlist = round.Entries
@@ -59,7 +77,7 @@ public class IndexModel : PageModel
             }
         }
 
-        // --- 2. Load upcoming rounds ---
+        // Load updated rounds
         UpcomingRounds = await _context.Rounds
             .Include(r => r.Entries)
                 .ThenInclude(e => e.Player)

@@ -23,19 +23,9 @@ namespace MyApp.Data
             //
             modelBuilder.Entity<ApplicationUser>()
                 .HasOne(u => u.Player)
-                .WithMany()
-                .HasForeignKey(u => u.PlayerId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            //
-            // 🔽 Your Existing Configuration
-            //
-
-            // Seed test players
-            modelBuilder.Entity<Player>().HasData(
-                new Player { Id = 1, Name = "Patrick Connolly", Email = "patrick@example.com" },
-                new Player { Id = 2, Name = "Jordan Smith", Email = "jordan@example.com" }
-            );
+                .WithOne()
+                .HasForeignKey<Player>(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Seed test rounds
             modelBuilder.Entity<Round>().HasData(

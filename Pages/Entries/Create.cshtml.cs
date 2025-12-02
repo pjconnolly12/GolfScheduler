@@ -6,16 +6,21 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using MyApp.Data;
 using MyApp.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 
 namespace MyApp.Pages.Entries
 {
+  [Authorize]
   public class CreateModel : PageModel
   {
     private readonly ApplicationDbContext _context;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public CreateModel(ApplicationDbContext context)
+    public CreateModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
     {
       _context = context;
+      _userManager = userManager;
     }
 
     [BindProperty]
@@ -39,10 +44,6 @@ namespace MyApp.Pages.Entries
       if (SelectedRound == null)
         return NotFound();
 
-      Players = await _context.Players
-          .OrderBy(p => p.Name)
-          .ToListAsync();
-
       Entry = new Entry
       {
         RoundId = roundId.Value,
@@ -55,13 +56,31 @@ namespace MyApp.Pages.Entries
     // --- POST: Create entry ---
     public async Task<IActionResult> OnPostAsync()
     {
+      var user = await _userManager.GetUserAsync(User);
+      if (user == null)
+      {
+        return Challenge(); // Not logged in
+      }
       Entry.CreatedAt = DateTime.UtcNow;
+      Entry.PlayerId = user.PlayerId;
 
       // Expiration logic: only "Maybe" entries expire
       if (Entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase))
         Entry.ExpiresAt = Entry.CreatedAt.AddHours(36);
       else
         Entry.ExpiresAt = null;
+
+      // Get the logged-in user's Player record
+      var userId = User.Identity?.Name;
+      var player = await _context.Players.FirstOrDefaultAsync(p => p.Email == userId);
+
+      if (player == null)
+      {
+        return Forbid(); // Should never happen, but protects from missing Player records
+      }
+
+      // Force ownership
+      Entry.PlayerId = player.Id;
 
       _context.Entries.Add(Entry);
 
@@ -87,6 +106,13 @@ namespace MyApp.Pages.Entries
 
       if (entry == null) return NotFound();
 
+      // Ownership check
+      var userId = User.Identity?.Name;
+      if (entry.Player?.Email != userId)
+      {
+        return Forbid(); // Prevents editing someone else’s entry
+      }
+
       await RemoveOrUpdateEntryAsync(entry);
       return RedirectToPage("/Index");
     }
@@ -99,6 +125,13 @@ namespace MyApp.Pages.Entries
           .FirstOrDefaultAsync(e => e.Id == entryId);
 
       if (entry == null) return NotFound();
+
+      // Ownership check
+      var userId = User.Identity?.Name;
+      if (entry.Player?.Email != userId)
+      {
+        return Forbid(); // Prevents editing someone else’s entry
+      }
 
       await RemoveOrUpdateEntryAsync(entry, newGuests);
       return RedirectToPage("/Index");

@@ -15,7 +15,7 @@ public class PlayerService
 
   public async Task EnsurePlayerForUser(ApplicationUser user)
   {
-    if (user.PlayerId != null) return; // Already has a Player
+    if (user.Id != null) return; // Already has a Player
 
     var player = new Player
     {
@@ -26,7 +26,7 @@ public class PlayerService
     _context.Players.Add(player);
     await _context.SaveChangesAsync();
 
-    user.PlayerId = player.Id;
+    user.Id = player.Id;
     await _userManager.UpdateAsync(user);
   }
 }
