@@ -29,9 +29,12 @@ public class IndexModel : PageModel
         if (user != null)
         {
             var player = await _context.Players
-                .FirstOrDefaultAsync(p => p.Id == user.Id);
+                .FirstOrDefaultAsync(p => p.UserId == user.Id
+                                          || (!string.IsNullOrEmpty(user.PlayerId) && p.Id == user.PlayerId)
+                                          || (!string.IsNullOrEmpty(user.Email) && p.Email == user.Email));
 
-            CurrentPlayerId = player?.Id.ToString();
+            // Fallback to the user's PlayerId if a player record isn't loaded yet so owner controls remain visible
+            CurrentPlayerId = player?.Id ?? user.PlayerId;
         }
 
         // --- 1. Remove expired entries ---
