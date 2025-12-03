@@ -62,7 +62,6 @@ namespace MyApp.Pages.Entries
         return Challenge(); // Not logged in
       }
       Entry.CreatedAt = DateTime.UtcNow;
-      Entry.PlayerId = user.PlayerId;
 
       // Expiration logic: only "Maybe" entries expire
       if (Entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase))
@@ -70,13 +69,30 @@ namespace MyApp.Pages.Entries
       else
         Entry.ExpiresAt = null;
 
-      // Get the logged-in user's Player record
-      var userId = User.Identity?.Name;
-      var player = await _context.Players.FirstOrDefaultAsync(p => p.Email == userId);
+      // Get or create the logged-in user's Player record
+      var player = await _context.Players
+        .FirstOrDefaultAsync(p => p.UserId == user.Id
+                                 || (!string.IsNullOrEmpty(user.PlayerId) && p.Id == user.PlayerId)
+                                 || (!string.IsNullOrEmpty(user.Email) && p.Email == user.Email));
 
       if (player == null)
       {
-        return Forbid(); // Should never happen, but protects from missing Player records
+        player = new Player
+        {
+          UserId = user.Id,
+          Name = user.UserName ?? "Unknown",
+          Email = user.Email ?? string.Empty
+        };
+
+        _context.Players.Add(player);
+        await _context.SaveChangesAsync();
+
+        // Back-link ApplicationUser to the new Player if not already linked
+        if (string.IsNullOrEmpty(user.PlayerId))
+        {
+          user.PlayerId = player.Id;
+          await _userManager.UpdateAsync(user);
+        }
       }
 
       // Force ownership
