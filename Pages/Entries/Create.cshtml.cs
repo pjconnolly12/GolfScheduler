@@ -61,7 +61,15 @@ namespace MyApp.Pages.Entries
       {
         return Challenge(); // Not logged in
       }
+      var player = await GetOrCreatePlayerAsync(user);
+      if (player == null)
+      {
+        return Forbid();
+      }
       Entry.CreatedAt = DateTime.UtcNow;
+
+      // Normalize guest count so it always persists and is counted when the entry is added
+      Entry.Guests = Math.Max(0, Entry.Guests ?? 0);
 
       // Expiration logic: only "Maybe" entries expire
       if (Entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase))
@@ -104,7 +112,7 @@ namespace MyApp.Pages.Entries
       var round = await _context.Rounds.FindAsync(Entry.RoundId);
       if (round != null && !Entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
       {
-        int totalToAdd = 1 + (Entry.Guests ?? 0);
+        int totalToAdd = 1 + Entry.Guests;
         round.Golfers += totalToAdd;
         _context.Rounds.Update(round);
       }
@@ -122,12 +130,9 @@ namespace MyApp.Pages.Entries
 
       if (entry == null) return NotFound();
 
-      // Ownership check
-      var userId = User.Identity?.Name;
-      if (entry.Player?.Email != userId)
-      {
-        return Forbid(); // Prevents editing someone else’s entry
-      }
+      var player = await GetCurrentPlayerAsync();
+      if (player == null || entry.PlayerId != player.Id)
+        return Forbid();
 
       await RemoveOrUpdateEntryAsync(entry);
       return RedirectToPage("/Index");
@@ -142,12 +147,9 @@ namespace MyApp.Pages.Entries
 
       if (entry == null) return NotFound();
 
-      // Ownership check
-      var userId = User.Identity?.Name;
-      if (entry.Player?.Email != userId)
-      {
-        return Forbid(); // Prevents editing someone else’s entry
-      }
+      var player = await GetCurrentPlayerAsync();
+      if (player == null || entry.PlayerId != player.Id)
+        return Forbid();
 
       await RemoveOrUpdateEntryAsync(entry, newGuests);
       return RedirectToPage("/Index");
@@ -162,6 +164,49 @@ namespace MyApp.Pages.Entries
 
       foreach (var entry in expiredEntries)
         await RemoveOrUpdateEntryAsync(entry);
+    }
+
+    private async Task<Player?> GetCurrentPlayerAsync()
+    {
+      var user = await _userManager.GetUserAsync(User);
+      if (user == null)
+        return null;
+
+      return await _context.Players
+        .FirstOrDefaultAsync(p => p.UserId == user.Id
+                                  || (!string.IsNullOrEmpty(user.PlayerId) && p.Id == user.PlayerId)
+                                  || (!string.IsNullOrEmpty(user.Email) && p.Email == user.Email));
+    }
+
+    private async Task<Player?> GetOrCreatePlayerAsync(ApplicationUser user)
+    {
+      var player = await _context.Players
+        .FirstOrDefaultAsync(p => p.UserId == user.Id
+                                  || (!string.IsNullOrEmpty(user.PlayerId) && p.Id == user.PlayerId)
+                                  || (!string.IsNullOrEmpty(user.Email) && p.Email == user.Email));
+
+      if (player != null)
+      {
+        return player;
+      }
+
+      player = new Player
+      {
+        UserId = user.Id,
+        Name = user.UserName ?? "Unknown",
+        Email = user.Email ?? string.Empty
+      };
+
+      _context.Players.Add(player);
+      await _context.SaveChangesAsync();
+
+      if (string.IsNullOrEmpty(user.PlayerId))
+      {
+        user.PlayerId = player.Id;
+        await _userManager.UpdateAsync(user);
+      }
+
+      return player;
     }
 
     // --- Helper: Remove or update entry ---
