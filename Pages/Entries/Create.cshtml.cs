@@ -78,7 +78,7 @@ namespace MyApp.Pages.Entries
         Entry.ExpiresAt = null;
 
       // Get or create the logged-in user's Player record
-      var player = await _context.Players
+      player = await _context.Players
         .FirstOrDefaultAsync(p => p.UserId == user.Id
                                  || (!string.IsNullOrEmpty(user.PlayerId) && p.Id == user.PlayerId)
                                  || (!string.IsNullOrEmpty(user.Email) && p.Email == user.Email));
@@ -112,7 +112,7 @@ namespace MyApp.Pages.Entries
       var round = await _context.Rounds.FindAsync(Entry.RoundId);
       if (round != null && !Entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
       {
-        int totalToAdd = 1 + Entry.Guests;
+        int totalToAdd = 1 + Entry.Guests ?? 0;
         round.Golfers += totalToAdd;
         _context.Rounds.Update(round);
       }
