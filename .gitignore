@@ -486,6 +486,7 @@ $RECYCLE.BIN/
 # Google API credentials and tokens
 credentials.json
 token.json
+appsettings.json
 
 # Secrets folder
 Secrets/

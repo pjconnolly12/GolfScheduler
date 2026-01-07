@@ -51,8 +51,8 @@ namespace MyApp.Services
 
     private async Task CheckInboxAsync()
     {
-      // TODO: Replace with real email API (Gmail, Graph, etc.)
       var emails = await FetchNewEmailsAsync();
+      _logger.LogInformation($"Fetched {emails.Count} new emails.");
 
       using var scope = _services.CreateScope();
       var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -61,6 +61,7 @@ namespace MyApp.Services
       {
         if (IsTeeTimeConfirmation(email.Subject))
         {
+          _logger.LogInformation("Processing tee time confirmation email.");
           var round = ParseRoundFromEmail(email.Subject, email.Body);
           if (round != null)
           {
@@ -68,6 +69,7 @@ namespace MyApp.Services
             bool exists = await db.Rounds.AnyAsync(r =>
                 r.Course == round.Course &&
                 r.Date == round.Date);
+            _logger.LogInformation($"Found round from email: {round.Course} on {round.Date}");
 
             if (!exists)
             {
@@ -82,7 +84,7 @@ namespace MyApp.Services
 
     private async Task<List<(string Subject, string Body)>> FetchNewEmailsAsync()
     {
-      string[] Scopes = { GmailService.Scope.GmailReadonly };
+      string[] Scopes = { GmailService.Scope.GmailModify };
       string ApplicationName = "Golf Scheduler";
 
       UserCredential credential;
@@ -169,7 +171,7 @@ namespace MyApp.Services
     private Round? ParseRoundFromEmail(string subject, string body)
     {
       // Only process confirmation emails
-      if (!subject.Contains("CONFIRMED", StringComparison.OrdinalIgnoreCase))
+      if (!subject.Contains("Confirmation", StringComparison.OrdinalIgnoreCase))
         return null;
 
       // Example email:
