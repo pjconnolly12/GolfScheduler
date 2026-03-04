@@ -13,6 +13,7 @@ namespace MyApp.Data
         public DbSet<Player> Players => Set<Player>();
         public DbSet<Round> Rounds => Set<Round>();
         public DbSet<Entry> Entries => Set<Entry>();
+        public DbSet<DistributionListMember> DistributionListMembers => Set<DistributionListMember>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -43,6 +44,21 @@ namespace MyApp.Data
                 .HasOne(e => e.Round)
                 .WithMany(r => r.Entries)
                 .HasForeignKey(e => e.RoundId);
+
+            modelBuilder.Entity<DistributionListMember>()
+                .HasKey(m => new { m.OwnerUserId, m.MemberUserId });
+
+            modelBuilder.Entity<DistributionListMember>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(m => m.OwnerUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<DistributionListMember>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(m => m.MemberUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

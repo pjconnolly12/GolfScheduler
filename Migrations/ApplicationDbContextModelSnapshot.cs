@@ -266,6 +266,21 @@ namespace GolfScheduler.Migrations
                     b.ToTable("Entries");
                 });
 
+            modelBuilder.Entity("MyApp.Models.DistributionListMember", b =>
+                {
+                    b.Property<string>("OwnerUserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("MemberUserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("OwnerUserId", "MemberUserId");
+
+                    b.HasIndex("MemberUserId");
+
+                    b.ToTable("DistributionListMembers");
+                });
+
             modelBuilder.Entity("MyApp.Models.Player", b =>
                 {
                     b.Property<string>("Id")
@@ -411,6 +426,21 @@ namespace GolfScheduler.Migrations
                     b.Navigation("Player");
 
                     b.Navigation("Round");
+                });
+
+            modelBuilder.Entity("MyApp.Models.DistributionListMember", b =>
+                {
+                    b.HasOne("MyApp.Models.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("MemberUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MyApp.Models.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("MyApp.Models.Player", b =>
