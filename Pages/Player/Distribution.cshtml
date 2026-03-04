@@ -1,0 +1,64 @@
+@page
+@model MyApp.Pages.Player.DistributionModel
+@{
+    ViewData["Title"] = "Distribution List";
+}
+
+<h2>Distribution List</h2>
+
+<p>Add users to your distribution list so you can manage who receives your shared updates.</p>
+
+@if (!ViewContext.ModelState.IsValid)
+{
+    <div asp-validation-summary="All" class="text-danger"></div>
+}
+
+<form method="post" asp-page-handler="Add" class="row g-2 align-items-end mb-4">
+    <div class="col-md-8">
+        <label asp-for="SelectedUserId" class="form-label">Add user</label>
+        <select asp-for="SelectedUserId" class="form-select">
+            <option value="">-- Select a user --</option>
+            @foreach (var user in Model.AvailableUsers)
+            {
+                <option value="@user.UserId">@user.UserName (@user.Email)</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-4">
+        <button type="submit" class="btn btn-primary">Add to list</button>
+    </div>
+</form>
+
+<h3>Current Members</h3>
+
+@if (!Model.CurrentMembers.Any())
+{
+    <p>Your distribution list is currently empty.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var member in Model.CurrentMembers)
+            {
+                <tr>
+                    <td>@member.UserName</td>
+                    <td>@member.Email</td>
+                    <td>
+                        <form method="post" asp-page-handler="Remove">
+                            <input type="hidden" name="memberUserId" value="@member.UserId" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
