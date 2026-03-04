@@ -37,6 +37,21 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate(); // ✅ This applies any pending migrations
+
+    // Safety net: ensure DistributionListMembers exists even if migration history is out-of-sync
+    db.Database.ExecuteSqlRaw(@"
+IF OBJECT_ID(N'[DistributionListMembers]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [DistributionListMembers] (
+        [OwnerUserId] nvarchar(450) NOT NULL,
+        [MemberUserId] nvarchar(450) NOT NULL,
+        CONSTRAINT [PK_DistributionListMembers] PRIMARY KEY ([OwnerUserId], [MemberUserId]),
+        CONSTRAINT [FK_DistributionListMembers_AspNetUsers_OwnerUserId] FOREIGN KEY ([OwnerUserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE CASCADE,
+        CONSTRAINT [FK_DistributionListMembers_AspNetUsers_MemberUserId] FOREIGN KEY ([MemberUserId]) REFERENCES [AspNetUsers] ([Id]) ON DELETE NO ACTION
+    );
+
+    CREATE INDEX [IX_DistributionListMembers_MemberUserId] ON [DistributionListMembers]([MemberUserId]);
+END");
 }
 
 // Configure the HTTP request pipeline.
