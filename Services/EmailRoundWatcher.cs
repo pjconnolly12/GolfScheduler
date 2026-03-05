@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Identity;
 using MyApp.Data;
 using MyApp.Models;
 using Google.Apis.Auth.OAuth2;
@@ -22,6 +23,7 @@ namespace MyApp.Services
   {
     private readonly ILogger<EmailRoundWatcher> _logger;
     private readonly IServiceProvider _services;
+    private const string NotificationOwnerEmail = "pjconnolly12@gmail.com";
 
     public EmailRoundWatcher(ILogger<EmailRoundWatcher> logger, IServiceProvider services)
     {
@@ -76,10 +78,55 @@ namespace MyApp.Services
               db.Rounds.Add(round);
               await db.SaveChangesAsync();
               _logger.LogInformation($"Created round: {round.Course} - {round.Date}");
+              await SendRoundCreatedNotificationAsync(scope.ServiceProvider, db, round, stoppingToken: default);
             }
           }
         }
       }
+    }
+
+
+    private async Task SendRoundCreatedNotificationAsync(
+      IServiceProvider serviceProvider,
+      ApplicationDbContext db,
+      Round round,
+      CancellationToken stoppingToken)
+    {
+      var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+      var roundNotificationEmailService = serviceProvider.GetRequiredService<IRoundNotificationEmailService>();
+      var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RoundNotificationEmailOptions>>().Value;
+
+      var organizer = await userManager.FindByEmailAsync(NotificationOwnerEmail);
+      if (organizer == null)
+      {
+        _logger.LogWarning("Round created but notification owner {Email} was not found.", NotificationOwnerEmail);
+        return;
+      }
+
+      var recipientEmails = await db.DistributionListMembers
+        .Where(m => m.OwnerUserId == organizer.Id)
+        .Join(
+          userManager.Users,
+          member => member.MemberUserId,
+          appUser => appUser.Id,
+          (member, appUser) => appUser.Email)
+        .Where(email => !string.IsNullOrWhiteSpace(email))
+        .Select(email => email!)
+        .Distinct()
+        .ToListAsync(stoppingToken);
+
+      if (recipientEmails.Count == 0)
+      {
+        _logger.LogInformation("Round created but no distribution list recipients found for {Email}.", NotificationOwnerEmail);
+        return;
+      }
+
+      await roundNotificationEmailService.SendRoundCreatedNotificationAsync(
+        organizer,
+        round,
+        recipientEmails,
+        options.SiteUrl,
+        stoppingToken);
     }
 
     private async Task<List<(string Subject, string Body)>> FetchNewEmailsAsync()

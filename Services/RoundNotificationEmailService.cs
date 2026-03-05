@@ -26,6 +26,7 @@ public class RoundNotificationEmailOptions
     public string SenderUserId { get; set; } = "me";
     public string? FromAddress { get; set; }
     public string ApplicationName { get; set; } = "Golf Scheduler";
+    public string SiteUrl { get; set; } = "https://localhost:5001";
 }
 
 public class RoundNotificationEmailService : IRoundNotificationEmailService
