@@ -22,6 +22,8 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>();
 
 builder.Services.AddScoped<PlayerService>();
+builder.Services.Configure<RoundNotificationEmailOptions>(builder.Configuration.GetSection("RoundNotificationEmail"));
+builder.Services.AddScoped<IRoundNotificationEmailService, RoundNotificationEmailService>();
 
 builder.Services.AddAuthentication()
     .AddGoogle(options =>

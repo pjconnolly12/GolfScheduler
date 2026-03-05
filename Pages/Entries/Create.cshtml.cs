@@ -8,6 +8,7 @@ using MyApp.Data;
 using MyApp.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using MyApp.Services;
 
 namespace MyApp.Pages.Entries
 {
@@ -16,11 +17,16 @@ namespace MyApp.Pages.Entries
   {
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IRoundNotificationEmailService _roundNotificationEmailService;
 
-    public CreateModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+    public CreateModel(
+      ApplicationDbContext context,
+      UserManager<ApplicationUser> userManager,
+      IRoundNotificationEmailService roundNotificationEmailService)
     {
       _context = context;
       _userManager = userManager;
+      _roundNotificationEmailService = roundNotificationEmailService;
     }
 
     [BindProperty]
@@ -118,6 +124,12 @@ namespace MyApp.Pages.Entries
       }
 
       await _context.SaveChangesAsync();
+
+      if (round != null)
+      {
+        await SendRoundNotificationAsync(user, round);
+      }
+
       return RedirectToPage("/Index");
     }
 
@@ -207,6 +219,35 @@ namespace MyApp.Pages.Entries
       }
 
       return player;
+    }
+
+
+    private async Task SendRoundNotificationAsync(ApplicationUser organizer, Round round)
+    {
+      var recipientEmails = await _context.DistributionListMembers
+          .Where(m => m.OwnerUserId == organizer.Id)
+          .Join(
+              _userManager.Users,
+              member => member.MemberUserId,
+              appUser => appUser.Id,
+              (member, appUser) => appUser.Email)
+          .Where(email => !string.IsNullOrWhiteSpace(email))
+          .Select(email => email!)
+          .Distinct()
+          .ToListAsync();
+
+      if (recipientEmails.Count == 0)
+      {
+        return;
+      }
+
+      var siteUrl = $"{Request.Scheme}://{Request.Host}";
+      await _roundNotificationEmailService.SendRoundCreatedNotificationAsync(
+          organizer,
+          round,
+          recipientEmails,
+          siteUrl,
+          HttpContext.RequestAborted);
     }
 
     // --- Helper: Remove or update entry ---
