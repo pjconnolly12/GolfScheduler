@@ -69,8 +69,8 @@ public class RoundNotificationEmailService : IRoundNotificationEmailService
             var organizerName = organizer.UserName ?? organizer.Email ?? "A golfer";
             var subject = $"{organizerName} added a new golf round";
             var formattedDate = round.Date.ToString("dddd, MMMM d, yyyy 'at' h:mm tt");
-            var body =
-$"""{organizerName} just added a golf round.
+            var body =$"""
+            {organizerName} just added a golf round.
 
 Course: {round.Course}
 Date & time: {formattedDate}
