@@ -118,6 +118,8 @@ namespace MyApp.Pages.Entries
       }
 
       await _context.SaveChangesAsync();
+
+
       return RedirectToPage("/Index");
     }
 
@@ -208,6 +210,7 @@ namespace MyApp.Pages.Entries
 
       return player;
     }
+
 
     // --- Helper: Remove or update entry ---
     private async Task RemoveOrUpdateEntryAsync(Entry entry, int? newGuests = null)
