@@ -1,5 +1,9 @@
-using System.Net;
-using System.Net.Mail;
+using System.Text;
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Gmail.v1;
+using Google.Apis.Gmail.v1.Data;
+using Google.Apis.Services;
+using Google.Apis.Util.Store;
 using Microsoft.Extensions.Options;
 using MyApp.Models;
 
@@ -17,16 +21,16 @@ public interface IRoundNotificationEmailService
 
 public class RoundNotificationEmailOptions
 {
-    public string Host { get; set; } = string.Empty;
-    public int Port { get; set; } = 587;
-    public bool EnableSsl { get; set; } = true;
-    public string FromAddress { get; set; } = string.Empty;
-    public string? Username { get; set; }
-    public string? Password { get; set; }
+    public string CredentialsFilePath { get; set; } = "Secrets/credentials.json";
+    public string TokenDirectoryPath { get; set; } = "token-round-notifications";
+    public string SenderUserId { get; set; } = "me";
+    public string? FromAddress { get; set; }
+    public string ApplicationName { get; set; } = "Golf Scheduler";
 }
 
 public class RoundNotificationEmailService : IRoundNotificationEmailService
 {
+    private static readonly string[] Scopes = [GmailService.Scope.GmailSend];
     private readonly RoundNotificationEmailOptions _options;
     private readonly ILogger<RoundNotificationEmailService> _logger;
 
@@ -50,16 +54,21 @@ public class RoundNotificationEmailService : IRoundNotificationEmailService
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_options.Host) || string.IsNullOrWhiteSpace(_options.FromAddress))
+        if (string.IsNullOrWhiteSpace(_options.CredentialsFilePath) || !File.Exists(_options.CredentialsFilePath))
         {
-            _logger.LogWarning("Round notification email skipped because SMTP configuration is incomplete.");
+            _logger.LogWarning(
+                "Round notification email skipped because Gmail credentials file was not found at {CredentialsFilePath}.",
+                _options.CredentialsFilePath);
             return;
         }
 
-        var organizerName = organizer.UserName ?? organizer.Email ?? "A golfer";
-        var subject = $"{organizerName} added a new golf round";
-        var formattedDate = round.Date.ToString("dddd, MMMM d, yyyy 'at' h:mm tt");
-        var body =
+        try
+        {
+            var service = await CreateGmailServiceAsync(cancellationToken);
+            var organizerName = organizer.UserName ?? organizer.Email ?? "A golfer";
+            var subject = $"{organizerName} added a new golf round";
+            var formattedDate = round.Date.ToString("dddd, MMMM d, yyyy 'at' h:mm tt");
+            var body =
 $"""{organizerName} just added a golf round.
 
 Course: {round.Course}
@@ -68,29 +77,60 @@ Date & time: {formattedDate}
 View details: {siteUrl}
 """;
 
-        using var message = new MailMessage
-        {
-            From = new MailAddress(_options.FromAddress),
-            Subject = subject,
-            Body = body
-        };
+            var rawMessage = BuildRawMessage(recipients, subject, body, _options.FromAddress);
+            var gmailMessage = new Message { Raw = rawMessage };
 
-        foreach (var recipient in recipients)
+            cancellationToken.ThrowIfCancellationRequested();
+            await service.Users.Messages.Send(gmailMessage, _options.SenderUserId).ExecuteAsync(cancellationToken);
+        }
+        catch (Exception ex)
         {
-            message.To.Add(recipient);
+            _logger.LogError(ex, "Failed to send round notification through Gmail API.");
+        }
+    }
+
+    private async Task<GmailService> CreateGmailServiceAsync(CancellationToken cancellationToken)
+    {
+        await using var stream = new FileStream(_options.CredentialsFilePath, FileMode.Open, FileAccess.Read);
+
+        var credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
+            GoogleClientSecrets.FromStream(stream).Secrets,
+            Scopes,
+            "round-notification-sender",
+            cancellationToken,
+            new FileDataStore(_options.TokenDirectoryPath, true));
+
+        return new GmailService(new BaseClientService.Initializer
+        {
+            HttpClientInitializer = credential,
+            ApplicationName = _options.ApplicationName
+        });
+    }
+
+    private static string BuildRawMessage(
+        IReadOnlyCollection<string> recipients,
+        string subject,
+        string body,
+        string? fromAddress)
+    {
+        var toLine = string.Join(",", recipients);
+        var messageBuilder = new StringBuilder();
+
+        if (!string.IsNullOrWhiteSpace(fromAddress))
+        {
+            messageBuilder.AppendLine($"From: {fromAddress}");
         }
 
-        using var client = new SmtpClient(_options.Host, _options.Port)
-        {
-            EnableSsl = _options.EnableSsl
-        };
+        messageBuilder.AppendLine($"To: {toLine}");
+        messageBuilder.AppendLine($"Subject: {subject}");
+        messageBuilder.AppendLine("Content-Type: text/plain; charset=utf-8");
+        messageBuilder.AppendLine();
+        messageBuilder.AppendLine(body);
 
-        if (!string.IsNullOrWhiteSpace(_options.Username) && !string.IsNullOrWhiteSpace(_options.Password))
-        {
-            client.Credentials = new NetworkCredential(_options.Username, _options.Password);
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-        await client.SendMailAsync(message);
+        var bytes = Encoding.UTF8.GetBytes(messageBuilder.ToString());
+        return Convert.ToBase64String(bytes)
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
     }
 }
