@@ -77,12 +77,76 @@ namespace MyApp.Services
             {
               db.Rounds.Add(round);
               await db.SaveChangesAsync();
+              await AddOrganizerAsFirstGolferAsync(scope.ServiceProvider, db, round, stoppingToken: default);
               _logger.LogInformation($"Created round: {round.Course} - {round.Date}");
               await SendRoundCreatedNotificationAsync(scope.ServiceProvider, db, round, stoppingToken: default);
             }
           }
         }
       }
+    }
+
+    private async Task AddOrganizerAsFirstGolferAsync(
+      IServiceProvider serviceProvider,
+      ApplicationDbContext db,
+      Round round,
+      CancellationToken stoppingToken)
+    {
+      var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+      var organizer = await userManager.FindByEmailAsync(NotificationOwnerEmail);
+      if (organizer == null)
+      {
+        _logger.LogWarning("Round created but organizer {Email} was not found for auto-enrollment.", NotificationOwnerEmail);
+        return;
+      }
+
+      var player = await db.Players
+        .FirstOrDefaultAsync(p =>
+          p.UserId == organizer.Id
+          || (!string.IsNullOrEmpty(organizer.PlayerId) && p.Id == organizer.PlayerId)
+          || (!string.IsNullOrEmpty(organizer.Email) && p.Email == organizer.Email),
+          stoppingToken);
+
+      if (player == null)
+      {
+        player = new Player
+        {
+          UserId = organizer.Id,
+          Name = organizer.UserName ?? organizer.Email ?? "Unknown",
+          Email = organizer.Email ?? string.Empty
+        };
+
+        db.Players.Add(player);
+        await db.SaveChangesAsync(stoppingToken);
+
+        if (string.IsNullOrEmpty(organizer.PlayerId))
+        {
+          organizer.PlayerId = player.Id;
+          await userManager.UpdateAsync(organizer);
+        }
+      }
+
+      var alreadyJoined = await db.Entries
+        .AnyAsync(e => e.RoundId == round.Id && e.PlayerId == player.Id, stoppingToken);
+
+      if (alreadyJoined)
+      {
+        return;
+      }
+
+      db.Entries.Add(new Entry
+      {
+        RoundId = round.Id,
+        PlayerId = player.Id,
+        Status = "Confirmed",
+        Guests = 0,
+        CreatedAt = DateTime.UtcNow
+      });
+
+      round.Golfers = Math.Max(round.Golfers, 1);
+      db.Rounds.Update(round);
+      await db.SaveChangesAsync(stoppingToken);
     }
 
 
