@@ -20,3 +20,44 @@ html {
 body {
   margin-bottom: 60px;
 }
+.round-card {
+  border: 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.mobile-table-wrap {
+  border: 1px solid #e9ecef;
+  border-radius: 0.5rem;
+}
+
+.guest-update-form input[type="number"] {
+  width: 4.5rem;
+}
+
+.round-cta {
+  min-height: 2.5rem;
+}
+
+@media (max-width: 767.98px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+
+  .table {
+    min-width: 640px;
+  }
+
+  .round-cta {
+    width: 100%;
+  }
+
+  .guest-update-form {
+    min-width: 10rem;
+  }
+}
