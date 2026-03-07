@@ -27,81 +27,87 @@ else
 
         int totalPlayers = activeEntries.Sum(e => 1 + (e.Guests ?? 0));
 
-        <div class="card mb-4 shadow-sm">
-            <div class="card-header bg-success text-white d-flex justify-content-between">
-                <div>
+        <div class="card mb-4 shadow-sm round-card">
+            <div class="card-header bg-success text-white d-flex flex-column flex-md-row justify-content-between gap-1">
+                <div class="fw-semibold">
                     <strong>@round.Course</strong> — @round.Date.ToString("dddd, MMM d, yyyy h:mm tt")
                 </div>
-                <div>
+                <div class="small text-md-end">
                     @totalPlayers player(s) signed up
                 </div>
             </div>
 
             <div class="card-body">
-                <p>@round.Notes</p>
+                @if (!string.IsNullOrWhiteSpace(round.Notes))
+                {
+                    <p class="text-muted mb-3">@round.Notes</p>
+                }
 
                 @if (activeEntries.Any())
                 {
-                    <table class="table table-sm table-striped mb-3">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Player</th>
-                                <th>Guests</th>
-                                <th>Status</th>
-                                <th>Expires At</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var entry in activeEntries)
-                            {
+                    <div class="table-responsive mobile-table-wrap mb-3">
+                        <table class="table table-sm table-striped mb-0 align-middle">
+                            <thead class="table-light">
                                 <tr>
-                                    <td>@entry.Player?.Name</td>
-                                    <td>
-                                        @if (entry.PlayerId.ToString() == Model.CurrentPlayerId)
-                                        {
-                                            <!-- Update button (only visible to owner) -->
-                                            <form method="post" asp-page="/Entries/Create" asp-page-handler="UpdateGuests" class="d-inline">
-                                                <input type="hidden" name="entryId" value="@entry.Id" />
-                                                <input type="number" name="newGuests" value="@(entry.Guests ?? 0)" min="0" max="2"
-                                                    class="form-control form-control-sm d-inline w-auto" />
-                                                <button type="submit" class="btn btn-sm btn-primary">Update</button>
-                                            </form>
-                                        }
-                                        else
-                                        {
-                                            <span>@(entry.Guests ?? 0)</span>
-                                        }
-                                    </td>
-                                    <td>@entry.Status</td>
-                                    <td>
-                                        @if (entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase) &&
-                                                                entry.ExpiresAt.HasValue)
-                                        {
-                                            @entry.ExpiresAt.Value.ToLocalTime().ToString("g")
-                                        }
-                                        else
-                                        {
-                                            <span>-</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        @if (entry.PlayerId.ToString() == Model.CurrentPlayerId)
-                                        {
-                                            <!-- Remove button (only visible to owner) -->
-                                            <form method="post" asp-page="/Entries/Create" asp-page-handler="Remove" class="d-inline">
-                                                <input type="hidden" name="entryId" value="@entry.Id" />
-                                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
-                                            </form>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">—</span>
-                                        }
-                                    </td>
+                                    <th>Player</th>
+                                    <th>Guests</th>
+                                    <th>Status</th>
+                                    <th>Expires At</th>
+                                    <th>Actions</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in activeEntries)
+                                {
+                                    <tr>
+                                        <td>@entry.Player?.Name</td>
+                                        <td>
+                                            @if (entry.PlayerId.ToString() == Model.CurrentPlayerId)
+                                            {
+                                                <!-- Update button (only visible to owner) -->
+                                                <form method="post" asp-page="/Entries/Create" asp-page-handler="UpdateGuests" class="guest-update-form d-flex flex-wrap gap-2 align-items-center">
+                                                    <input type="hidden" name="entryId" value="@entry.Id" />
+                                                    <input type="number" name="newGuests" value="@(entry.Guests ?? 0)" min="0" max="2"
+                                                        class="form-control form-control-sm" />
+                                                    <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <span>@(entry.Guests ?? 0)</span>
+                                            }
+                                        </td>
+                                        <td>@entry.Status</td>
+                                        <td>
+                                            @if (entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase) &&
+                                                                                        entry.ExpiresAt.HasValue)
+                                            {
+                                                @entry.ExpiresAt.Value.ToLocalTime().ToString("g")
+                                            }
+                                            else
+                                            {
+                                                <span>-</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (entry.PlayerId.ToString() == Model.CurrentPlayerId)
+                                            {
+                                                <!-- Remove button (only visible to owner) -->
+                                                <form method="post" asp-page="/Entries/Create" asp-page-handler="Remove" class="d-inline-block">
+                                                    <input type="hidden" name="entryId" value="@entry.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
                 else
                 {
@@ -113,7 +119,8 @@ else
                 {
                     <div class="mt-4 p-3 border-top">
                         <h6 class="text-muted mb-2">Waitlist</h6>
-                        <table class="table table-sm">
+                        <div class="table-responsive mobile-table-wrap">
+                        <table class="table table-sm mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th>Player</th>
@@ -130,6 +137,7 @@ else
                                 }
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 }
 
@@ -138,13 +146,13 @@ else
                     @if (User.Identity?.IsAuthenticated ?? false)
                     {
                         <a asp-page="/Entries/Create" asp-route-roundId="@round.Id" asp-route-status="Confirmed"
-                            class="btn btn-primary btn-sm mt-2">
+                            class="btn btn-primary round-cta mt-2">
                             Join Round
                         </a>
                     }
                     else
                     {
-                        <a asp-page="/Account/Login" class="btn btn-primary btn-sm mt-2">
+                        <a asp-page="/Account/Login" class="btn btn-primary round-cta mt-2">
                             Log in to Join
                         </a>
                     }
@@ -154,13 +162,13 @@ else
                     @if (User.Identity?.IsAuthenticated ?? false)
                     {
                         <a asp-page="/Entries/Create" asp-route-roundId="@round.Id" asp-route-status="Waitlist"
-                            class="btn btn-warning btn-sm mt-2">
+                            class="btn btn-warning round-cta mt-2">
                             Join Waitlist
                         </a>
                     }
                     else
                     {
-                        <a asp-page="/Account/Login" class="btn btn-warning btn-sm mt-2">
+                        <a asp-page="/Account/Login" class="btn btn-warning round-cta mt-2">
                             Log in to Join Waitlist
                         </a>
                     }
