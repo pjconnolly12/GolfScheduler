@@ -60,6 +60,7 @@ namespace MyApp.Services
       var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
       await SendUpcomingRoundRemindersAsync(scope.ServiceProvider, db, default);
+      await SendMaybeEntryExpirationRemindersAsync(scope.ServiceProvider, db, default);
 
       foreach (var email in emails)
       {
@@ -148,6 +149,57 @@ namespace MyApp.Services
 
       round.Golfers = Math.Max(round.Golfers, 1);
       db.Rounds.Update(round);
+      await db.SaveChangesAsync(stoppingToken);
+    }
+
+    private async Task SendMaybeEntryExpirationRemindersAsync(
+      IServiceProvider serviceProvider,
+      ApplicationDbContext db,
+      CancellationToken stoppingToken)
+    {
+      var nowUtc = DateTime.UtcNow;
+
+      var entriesToRemind = await db.Entries
+        .Include(e => e.Player)
+        .Include(e => e.Round)
+        .Where(e =>
+          e.MaybeReminderSentAtUtc == null &&
+          e.Status == "Maybe" &&
+          e.ExpiresAt.HasValue &&
+          e.ExpiresAt > nowUtc &&
+          e.ExpiresAt.Value.AddHours(-12) <= nowUtc)
+        .ToListAsync(stoppingToken);
+
+      if (entriesToRemind.Count == 0)
+      {
+        return;
+      }
+
+      var roundNotificationEmailService = serviceProvider.GetRequiredService<IRoundNotificationEmailService>();
+      var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RoundNotificationEmailOptions>>().Value;
+
+      foreach (var entry in entriesToRemind)
+      {
+        var recipientEmail = entry.Player?.Email;
+        if (string.IsNullOrWhiteSpace(recipientEmail))
+        {
+          _logger.LogInformation("Skipping Maybe expiration reminder for entry {EntryId} because the player email is missing.", entry.Id);
+          entry.MaybeReminderSentAtUtc = nowUtc;
+          continue;
+        }
+
+        var reminderSent = await roundNotificationEmailService.SendMaybeEntryExpirationReminderAsync(
+          entry.Round,
+          recipientEmail,
+          options.SiteUrl,
+          stoppingToken);
+
+        if (reminderSent)
+        {
+          entry.MaybeReminderSentAtUtc = nowUtc;
+        }
+      }
+
       await db.SaveChangesAsync(stoppingToken);
     }
 
