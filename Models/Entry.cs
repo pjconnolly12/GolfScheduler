@@ -16,6 +16,7 @@ namespace MyApp.Models
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string? Notes { get; set; }
     public DateTime? ExpiresAt { get; set; }
+    public DateTime? MaybeReminderSentAtUtc { get; set; }
     public string Status { get; set; } = "";
     public int? Guests { get; set; }
   }
