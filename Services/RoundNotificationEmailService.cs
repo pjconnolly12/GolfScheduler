@@ -11,10 +11,18 @@ namespace MyApp.Services;
 
 public interface IRoundNotificationEmailService
 {
-    Task SendRoundCreatedNotificationAsync(
+    Task<bool> SendRoundCreatedNotificationAsync(
         ApplicationUser organizer,
         Round round,
         IReadOnlyCollection<string> recipients,
+        string siteUrl,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> SendRoundReminderAsync(
+        Round round,
+        IReadOnlyCollection<string> recipients,
+        IReadOnlyCollection<string> confirmedEntries,
+        IReadOnlyCollection<string> waitlistEntries,
         string siteUrl,
         CancellationToken cancellationToken = default);
 }
@@ -43,24 +51,16 @@ public class RoundNotificationEmailService : IRoundNotificationEmailService
         _logger = logger;
     }
 
-    public async Task SendRoundCreatedNotificationAsync(
+    public async Task<bool> SendRoundCreatedNotificationAsync(
         ApplicationUser organizer,
         Round round,
         IReadOnlyCollection<string> recipients,
         string siteUrl,
         CancellationToken cancellationToken = default)
     {
-        if (recipients.Count == 0)
+        if (!CanSendEmail(recipients))
         {
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(_options.CredentialsFilePath) || !File.Exists(_options.CredentialsFilePath))
-        {
-            _logger.LogWarning(
-                "Round notification email skipped because Gmail credentials file was not found at {CredentialsFilePath}.",
-                _options.CredentialsFilePath);
-            return;
+            return false;
         }
 
         try
@@ -69,25 +69,113 @@ public class RoundNotificationEmailService : IRoundNotificationEmailService
             var organizerName = organizer.UserName ?? organizer.Email ?? "A golfer";
             var subject = $"{organizerName} added a new golf round";
             var formattedDate = round.Date.ToString("dddd, MMMM d, yyyy 'at' h:mm tt");
-            var body =$"""
+            var body = $"""
             {organizerName} just added a golf round.
 
-Course: {round.Course}
-Date & time: {formattedDate}
+            Course: {round.Course}
+            Date & time: {formattedDate}
 
-View details: {siteUrl}
-""";
+            View details: {siteUrl}
+            """;
 
             var rawMessage = BuildRawMessage(recipients, subject, body, _options.FromAddress);
             var gmailMessage = new Message { Raw = rawMessage };
 
             cancellationToken.ThrowIfCancellationRequested();
             await service.Users.Messages.Send(gmailMessage, _options.SenderUserId).ExecuteAsync(cancellationToken);
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send round notification through Gmail API.");
+            return false;
         }
+    }
+
+    public async Task<bool> SendRoundReminderAsync(
+        Round round,
+        IReadOnlyCollection<string> recipients,
+        IReadOnlyCollection<string> confirmedEntries,
+        IReadOnlyCollection<string> waitlistEntries,
+        string siteUrl,
+        CancellationToken cancellationToken = default)
+    {
+        if (!CanSendEmail(recipients))
+        {
+            return false;
+        }
+
+        try
+        {
+            var service = await CreateGmailServiceAsync(cancellationToken);
+            var subject = $"Reminder: golf round in 48 hours at {round.Course}";
+            var formattedDate = round.Date.ToString("dddd, MMMM d, yyyy 'at' h:mm tt");
+            var confirmedSection = FormatList("Current entries in the round", confirmedEntries);
+            var waitlistSection = FormatList("Waitlist for the round", waitlistEntries);
+            var body = $"""
+            This is your 48-hour reminder for the upcoming golf round.
+
+            Round details
+            - Round Date/Time: {formattedDate}
+            - Location: {round.Course}
+
+            {confirmedSection}
+
+            {waitlistSection}
+
+            If you cannot make the round please remove yourself so a new person can join.
+
+            Link to the app: {siteUrl}
+            """;
+
+            var rawMessage = BuildRawMessage(recipients, subject, body, _options.FromAddress);
+            var gmailMessage = new Message { Raw = rawMessage };
+
+            cancellationToken.ThrowIfCancellationRequested();
+            await service.Users.Messages.Send(gmailMessage, _options.SenderUserId).ExecuteAsync(cancellationToken);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send round reminder through Gmail API.");
+            return false;
+        }
+    }
+
+    private bool CanSendEmail(IReadOnlyCollection<string> recipients)
+    {
+        if (recipients.Count == 0)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_options.CredentialsFilePath) || !File.Exists(_options.CredentialsFilePath))
+        {
+            _logger.LogWarning(
+                "Round notification email skipped because Gmail credentials file was not found at {CredentialsFilePath}.",
+                _options.CredentialsFilePath);
+            return false;
+        }
+
+        return true;
+    }
+
+    private static string FormatList(string heading, IReadOnlyCollection<string> items)
+    {
+        if (items.Count == 0)
+        {
+            return $"{heading}: None";
+        }
+
+        var builder = new StringBuilder();
+        builder.AppendLine($"{heading}:");
+
+        foreach (var item in items)
+        {
+            builder.AppendLine($"- {item}");
+        }
+
+        return builder.ToString().TrimEnd();
     }
 
     private async Task<GmailService> CreateGmailServiceAsync(CancellationToken cancellationToken)

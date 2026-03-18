@@ -59,6 +59,8 @@ namespace MyApp.Services
       using var scope = _services.CreateScope();
       var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+      await SendUpcomingRoundRemindersAsync(scope.ServiceProvider, db, default);
+
       foreach (var email in emails)
       {
         if (IsTeeTimeConfirmation(email.Subject))
@@ -191,6 +193,91 @@ namespace MyApp.Services
         recipientEmails,
         options.SiteUrl,
         stoppingToken);
+    }
+
+    private async Task SendUpcomingRoundRemindersAsync(
+      IServiceProvider serviceProvider,
+      ApplicationDbContext db,
+      CancellationToken stoppingToken)
+    {
+      var nowLocal = DateTime.Now;
+      var reminderCutoffLocal = nowLocal.AddHours(48);
+      var reminderSentAtUtc = DateTime.UtcNow;
+
+      var roundsToRemind = await db.Rounds
+        .Include(r => r.Entries)
+          .ThenInclude(e => e.Player)
+        .Where(r => r.ReminderSentAtUtc == null && r.Date > nowLocal && r.Date <= reminderCutoffLocal)
+        .ToListAsync(stoppingToken);
+
+      if (roundsToRemind.Count == 0)
+      {
+        return;
+      }
+
+      var roundNotificationEmailService = serviceProvider.GetRequiredService<IRoundNotificationEmailService>();
+      var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RoundNotificationEmailOptions>>().Value;
+
+      foreach (var round in roundsToRemind)
+      {
+        var confirmedEntries = round.Entries
+          .Where(e => e.Status.Equals("Confirmed", StringComparison.OrdinalIgnoreCase))
+          .OrderBy(e => e.CreatedAt)
+          .ToList();
+
+        var recipientEmails = confirmedEntries
+          .Select(e => e.Player?.Email)
+          .Where(email => !string.IsNullOrWhiteSpace(email))
+          .Select(email => email!)
+          .Distinct(StringComparer.OrdinalIgnoreCase)
+          .ToList();
+
+        if (recipientEmails.Count == 0)
+        {
+          _logger.LogInformation("Skipping reminder for round {RoundId} because there are no confirmed recipients.", round.Id);
+          round.ReminderSentAtUtc = reminderSentAtUtc;
+          continue;
+        }
+
+        var confirmedNames = confirmedEntries
+          .Select(FormatEntryDisplay)
+          .ToList();
+
+        var waitlistNames = round.Entries
+          .Where(e => e.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
+          .OrderBy(e => e.CreatedAt)
+          .Select(FormatEntryDisplay)
+          .ToList();
+
+        var reminderSent = await roundNotificationEmailService.SendRoundReminderAsync(
+          round,
+          recipientEmails,
+          confirmedNames,
+          waitlistNames,
+          options.SiteUrl,
+          stoppingToken);
+
+        if (reminderSent)
+        {
+          round.ReminderSentAtUtc = reminderSentAtUtc;
+        }
+      }
+
+      await db.SaveChangesAsync(stoppingToken);
+    }
+
+    private static string FormatEntryDisplay(Entry entry)
+    {
+      var playerName = entry.Player?.Name;
+      if (string.IsNullOrWhiteSpace(playerName))
+      {
+        playerName = entry.Player?.Email ?? "Unknown player";
+      }
+
+      var guests = entry.Guests ?? 0;
+      return guests > 0
+        ? $"{playerName} (+{guests} guest{(guests == 1 ? string.Empty : "s")})"
+        : playerName;
     }
 
     private async Task<List<(string Subject, string Body)>> FetchNewEmailsAsync()
