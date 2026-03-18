@@ -25,6 +25,12 @@ public interface IRoundNotificationEmailService
         IReadOnlyCollection<string> waitlistEntries,
         string siteUrl,
         CancellationToken cancellationToken = default);
+
+    Task<bool> SendMaybeEntryExpirationReminderAsync(
+        Round round,
+        string recipient,
+        string siteUrl,
+        CancellationToken cancellationToken = default);
 }
 
 public class RoundNotificationEmailOptions
@@ -138,6 +144,46 @@ public class RoundNotificationEmailService : IRoundNotificationEmailService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send round reminder through Gmail API.");
+            return false;
+        }
+    }
+
+    public async Task<bool> SendMaybeEntryExpirationReminderAsync(
+        Round round,
+        string recipient,
+        string siteUrl,
+        CancellationToken cancellationToken = default)
+    {
+        var recipients = new[] { recipient };
+        if (!CanSendEmail(recipients))
+        {
+            return false;
+        }
+
+        try
+        {
+            var service = await CreateGmailServiceAsync(cancellationToken);
+            var subject = $"Reminder: your Maybe entry for {round.Course} expires in 12 hours";
+            var formattedDate = round.Date.ToString("dddd, MMMM d, yyyy 'at' h:mm tt");
+            var body = $"""
+            Round details
+            - Round Date/Time: {formattedDate}
+
+            Your entry is currently still listed as Maybe, this will expire in 12 hours and your saved spot will be removed. Please review and confirm your entry or remove your entry.
+
+            Link to the app: {siteUrl}
+            """;
+
+            var rawMessage = BuildRawMessage(recipients, subject, body, _options.FromAddress);
+            var gmailMessage = new Message { Raw = rawMessage };
+
+            cancellationToken.ThrowIfCancellationRequested();
+            await service.Users.Messages.Send(gmailMessage, _options.SenderUserId).ExecuteAsync(cancellationToken);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send Maybe entry expiration reminder through Gmail API.");
             return false;
         }
     }

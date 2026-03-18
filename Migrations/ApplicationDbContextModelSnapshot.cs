@@ -244,6 +244,9 @@ namespace GolfScheduler.Migrations
                     b.Property<int?>("Guests")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("MaybeReminderSentAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
