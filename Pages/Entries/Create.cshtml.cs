@@ -45,10 +45,17 @@ namespace MyApp.Pages.Entries
       if (SelectedRound == null)
         return NotFound();
 
+      var requestedStatus = status ?? "Confirmed";
+      if (requestedStatus.Equals("Maybe", StringComparison.OrdinalIgnoreCase) && !CanUseMaybeStatus(SelectedRound.Date))
+      {
+        requestedStatus = "Confirmed";
+        ModelState.AddModelError(string.Empty, "Maybe is unavailable within 48 hours of the round. Please join as Confirmed instead.");
+      }
+
       Entry = new Entry
       {
         RoundId = roundId.Value,
-        Status = status ?? "Confirmed"
+        Status = requestedStatus
       };
 
       return Page();
@@ -111,6 +118,12 @@ namespace MyApp.Pages.Entries
       if (SelectedRound == null)
       {
         return NotFound();
+      }
+
+      if (Entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase) && !CanUseMaybeStatus(SelectedRound.Date))
+      {
+        ModelState.AddModelError(nameof(Entry.Status), "Maybe is unavailable within 48 hours of the round. Please choose Confirmed.");
+        return Page();
       }
 
       if (!Entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
@@ -242,6 +255,13 @@ namespace MyApp.Pages.Entries
       return !entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase)
           && (!entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase)
               || (entry.ExpiresAt ?? DateTime.MaxValue) > DateTime.UtcNow);
+    }
+
+    public bool MaybeStatusAllowed => SelectedRound != null && CanUseMaybeStatus(SelectedRound.Date);
+
+    private static bool CanUseMaybeStatus(DateTime roundDate)
+    {
+      return roundDate > DateTime.Now.AddHours(48);
     }
 
     private async Task<Round?> LoadSelectedRoundAsync(int roundId)
