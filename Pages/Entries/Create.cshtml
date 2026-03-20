@@ -37,8 +37,15 @@
       <label asp-for="Entry.Status">Status (Selecting "Maybe" will allow you to save this spot for 24 hours) </label>
       <select asp-for="Entry.Status" class="form-control">
         <option value="Confirmed">Confirmed</option>
-        <option value="Maybe">Maybe</option>
+        @if (Model.MaybeStatusAllowed)
+        {
+          <option value="Maybe">Maybe</option>
+        }
       </select>
+      @if (!Model.MaybeStatusAllowed)
+      {
+        <small class="form-text text-muted">Maybe is only available more than 48 hours before the round starts.</small>
+      }
     </div>
   }
 
