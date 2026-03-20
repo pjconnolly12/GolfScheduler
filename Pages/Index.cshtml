@@ -92,6 +92,15 @@ else
                                         <td>
                                             @if (entry.PlayerId.ToString() == Model.CurrentPlayerId)
                                             {
+                                                @if (entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <form method="post" asp-page="/Entries/Create" asp-page-handler="UpdateStatus" class="d-inline-block me-2">
+                                                        <input type="hidden" name="entryId" value="@entry.Id" />
+                                                        <input type="hidden" name="newStatus" value="Confirmed" />
+                                                        <button type="submit" class="btn btn-sm btn-success">Confirm</button>
+                                                    </form>
+                                                }
+
                                                 <!-- Remove button (only visible to owner) -->
                                                 <form method="post" asp-page="/Entries/Create" asp-page-handler="Remove" class="d-inline-block">
                                                     <input type="hidden" name="entryId" value="@entry.Id" />
