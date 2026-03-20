@@ -157,6 +157,33 @@ namespace MyApp.Pages.Entries
       return RedirectToPage("/Index");
     }
 
+    // --- POST: Update entry status ---
+    public async Task<IActionResult> OnPostUpdateStatusAsync(int entryId, string newStatus)
+    {
+      var entry = await _context.Entries
+          .FirstOrDefaultAsync(e => e.Id == entryId);
+
+      if (entry == null) return NotFound();
+
+      var player = await GetCurrentPlayerAsync();
+      if (player == null || entry.PlayerId != player.Id)
+        return Forbid();
+
+      if (!entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase) ||
+          !newStatus.Equals("Confirmed", StringComparison.OrdinalIgnoreCase))
+      {
+        return RedirectToPage("/Index");
+      }
+
+      entry.Status = "Confirmed";
+      entry.ExpiresAt = null;
+
+      _context.Entries.Update(entry);
+      await _context.SaveChangesAsync();
+
+      return RedirectToPage("/Index");
+    }
+
     // --- Cleanup expired entries ---
     public async Task RemoveExpiredEntriesAsync()
     {
