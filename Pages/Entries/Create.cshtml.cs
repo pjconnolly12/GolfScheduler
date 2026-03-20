@@ -36,10 +36,7 @@ namespace MyApp.Pages.Entries
       if (roundId == null)
         return RedirectToPage("/Index"); // no round selected
 
-      SelectedRound = await _context.Rounds
-          .Include(r => r.Entries)
-          .ThenInclude(e => e.Player)
-          .FirstOrDefaultAsync(r => r.Id == roundId);
+      SelectedRound = await LoadSelectedRoundAsync(roundId.Value);
 
       if (SelectedRound == null)
         return NotFound();
@@ -106,19 +103,28 @@ namespace MyApp.Pages.Entries
       // Force ownership
       Entry.PlayerId = player.Id;
 
-      _context.Entries.Add(Entry);
-
-      // Update round's player count if not waitlist
-      var round = await _context.Rounds.FindAsync(Entry.RoundId);
-      if (round != null && !Entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
+      SelectedRound = await LoadSelectedRoundAsync(Entry.RoundId);
+      if (SelectedRound == null)
       {
-        int totalToAdd = 1 + Entry.Guests ?? 0;
-        round.Golfers += totalToAdd;
-        _context.Rounds.Update(round);
+        return NotFound();
       }
 
-      await _context.SaveChangesAsync();
+      if (!Entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
+      {
+        int totalToAdd = 1 + (Entry.Guests ?? 0);
+        int currentPlayers = GetActiveGolferCount(SelectedRound);
+        if (currentPlayers + totalToAdd > 4)
+        {
+          ModelState.AddModelError(string.Empty, "This entry would put the round over 4 players. Reduce the guest count or join the waitlist instead.");
+          return Page();
+        }
 
+        SelectedRound.Golfers = currentPlayers + totalToAdd;
+        _context.Rounds.Update(SelectedRound);
+      }
+
+      _context.Entries.Add(Entry);
+      await _context.SaveChangesAsync();
 
       return RedirectToPage("/Index");
     }
@@ -193,6 +199,28 @@ namespace MyApp.Pages.Entries
 
       foreach (var entry in expiredEntries)
         await RemoveOrUpdateEntryAsync(entry);
+    }
+
+    private static int GetActiveGolferCount(Round round)
+    {
+      return round.Entries
+          .Where(IsActiveEntry)
+          .Sum(e => 1 + (e.Guests ?? 0));
+    }
+
+    private static bool IsActiveEntry(Entry entry)
+    {
+      return !entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase)
+          && (!entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase)
+              || (entry.ExpiresAt ?? DateTime.MaxValue) > DateTime.UtcNow);
+    }
+
+    private async Task<Round?> LoadSelectedRoundAsync(int roundId)
+    {
+      return await _context.Rounds
+          .Include(r => r.Entries)
+          .ThenInclude(e => e.Player)
+          .FirstOrDefaultAsync(r => r.Id == roundId);
     }
 
     private async Task<Player?> GetCurrentPlayerAsync()
