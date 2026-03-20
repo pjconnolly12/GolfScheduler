@@ -8,6 +8,7 @@ using MyApp.Data;
 using MyApp.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 namespace MyApp.Pages.Entries
 {
@@ -29,6 +30,9 @@ namespace MyApp.Pages.Entries
     public Round? SelectedRound { get; set; }
 
     public List<Player> Players { get; set; } = new();
+
+    [TempData]
+    public string? GuestUpdateErrorMessage { get; set; }
 
     // --- GET: Load form ---
     public async Task<IActionResult> OnGetAsync(int? roundId, string? status = null)
@@ -158,6 +162,31 @@ namespace MyApp.Pages.Entries
       var player = await GetCurrentPlayerAsync();
       if (player == null || entry.PlayerId != player.Id)
         return Forbid();
+
+      if (newGuests < 0)
+      {
+        GuestUpdateErrorMessage = "Guest count cannot be negative.";
+        return RedirectToPage("/Index");
+      }
+
+      var round = await LoadSelectedRoundAsync(entry.RoundId);
+      if (round == null)
+      {
+        return NotFound();
+      }
+
+      if (!entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
+      {
+        int currentPlayers = GetActiveGolferCount(round);
+        int oldTotal = 1 + (entry.Guests ?? 0);
+        int newTotal = 1 + newGuests;
+
+        if (currentPlayers - oldTotal + newTotal > 4)
+        {
+          GuestUpdateErrorMessage = "This update would put the round over 4 players. Reduce the guest count to 3 or fewer for this entry.";
+          return RedirectToPage("/Index");
+        }
+      }
 
       await RemoveOrUpdateEntryAsync(entry, newGuests);
       return RedirectToPage("/Index");

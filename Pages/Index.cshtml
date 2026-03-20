@@ -6,6 +6,13 @@
 
 <h1 class="mb-3">Upcoming Rounds</h1>
 
+@if (!string.IsNullOrWhiteSpace(TempData["GuestUpdateErrorMessage"] as string))
+{
+    <div class="alert alert-danger" role="alert">
+        @TempData["GuestUpdateErrorMessage"]
+    </div>
+}
+
 @if (!Model.UpcomingRounds.Any())
 {
     <p>No upcoming rounds yet. <a asp-page="/Rounds/Create">Add one</a>.</p>
@@ -67,7 +74,7 @@ else
                                                 <!-- Update button (only visible to owner) -->
                                                 <form method="post" asp-page="/Entries/Create" asp-page-handler="UpdateGuests" class="guest-update-form d-flex flex-wrap gap-2 align-items-center">
                                                     <input type="hidden" name="entryId" value="@entry.Id" />
-                                                    <input type="number" name="newGuests" value="@(entry.Guests ?? 0)" min="0" max="2"
+                                                    <input type="number" name="newGuests" value="@(entry.Guests ?? 0)" min="0" max="3"
                                                         class="form-control form-control-sm" />
                                                     <button type="submit" class="btn btn-sm btn-primary">Update</button>
                                                 </form>
