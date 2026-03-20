@@ -136,11 +136,12 @@ else
                     <div class="mt-4 p-3 border-top">
                         <h6 class="text-muted mb-2">Waitlist</h6>
                         <div class="table-responsive mobile-table-wrap">
-                        <table class="table table-sm mb-0">
+                        <table class="table table-sm mb-0 align-middle">
                             <thead class="table-light">
                                 <tr>
                                     <th>Player</th>
                                     <th>Guests</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -148,7 +149,20 @@ else
                                 {
                                     <tr>
                                         <td>@entry.Player?.Name</td>
-                                        <td>@entry.Guests</td>
+                                        <td>@(entry.Guests ?? 0)</td>
+                                        <td>
+                                            @if (entry.PlayerId.ToString() == Model.CurrentPlayerId)
+                                            {
+                                                <form method="post" asp-page="/Entries/Create" asp-page-handler="Remove" class="d-inline-block">
+                                                    <input type="hidden" name="entryId" value="@entry.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
