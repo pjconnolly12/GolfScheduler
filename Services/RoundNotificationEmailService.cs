@@ -31,6 +31,14 @@ public interface IRoundNotificationEmailService
         string recipient,
         string siteUrl,
         CancellationToken cancellationToken = default);
+
+    Task<bool> SendWaitlistPromotionNotificationAsync(
+        Round round,
+        string recipient,
+        string promotedPlayerName,
+        IReadOnlyCollection<string> otherMembers,
+        string siteUrl,
+        CancellationToken cancellationToken = default);
 }
 
 public class RoundNotificationEmailOptions
@@ -188,6 +196,56 @@ public class RoundNotificationEmailService : IRoundNotificationEmailService
         }
     }
 
+    public async Task<bool> SendWaitlistPromotionNotificationAsync(
+        Round round,
+        string recipient,
+        string promotedPlayerName,
+        IReadOnlyCollection<string> otherMembers,
+        string siteUrl,
+        CancellationToken cancellationToken = default)
+    {
+        var recipients = new[] { recipient };
+        if (!CanSendEmail(recipients))
+        {
+            return false;
+        }
+
+        try
+        {
+            var service = await CreateGmailServiceAsync(cancellationToken);
+            var subject = $"You're in the golf group for {round.Course}";
+            var formattedDate = round.Date.ToString("dddd, MMMM d, yyyy 'at' h:mm tt");
+            var otherMembersSection = FormatList("Other members in your group", otherMembers);
+            var body = $"""
+            Hi {promotedPlayerName},
+
+            You are now in the golf group.
+
+            Group details
+            - Date & time: {formattedDate}
+            - Course: {round.Course}
+
+            {otherMembersSection}
+
+            Link to the app: {siteUrl}
+
+            If you'd like to update this entry please use the app to do so.
+            """;
+
+            var rawMessage = BuildRawMessage(recipients, subject, body, _options.FromAddress);
+            var gmailMessage = new Message { Raw = rawMessage };
+
+            cancellationToken.ThrowIfCancellationRequested();
+            await service.Users.Messages.Send(gmailMessage, _options.SenderUserId).ExecuteAsync(cancellationToken);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send waitlist promotion notification through Gmail API.");
+            return false;
+        }
+    }
+
     private bool CanSendEmail(IReadOnlyCollection<string> recipients)
     {
         if (recipients.Count == 0)
@@ -266,6 +324,6 @@ public class RoundNotificationEmailService : IRoundNotificationEmailService
         return Convert.ToBase64String(bytes)
             .Replace('+', '-')
             .Replace('/', '_')
-            .TrimEnd('=');
+            .Replace("=", string.Empty);
     }
 }
