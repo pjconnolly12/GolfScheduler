@@ -89,7 +89,9 @@ public class RoundNotificationEmailService : IRoundNotificationEmailService
             Course: {round.Course}
             Date & time: {formattedDate}
 
-            View details: {siteUrl}
+            If you're interested in joining please use the app to add yourself to the round.
+
+            {siteUrl}
             """;
 
             var rawMessage = BuildRawMessage(recipients, subject, body, _options.FromAddress);
@@ -175,9 +177,9 @@ public class RoundNotificationEmailService : IRoundNotificationEmailService
             var formattedDate = round.Date.ToString("dddd, MMMM d, yyyy 'at' h:mm tt");
             var body = $"""
             Round details
-            - Round Date/Time: {formattedDate}
+            - Date {formattedDate}
 
-            Your entry is currently still listed as Maybe, this will expire in 12 hours and your saved spot will be removed. Please review and confirm your entry or remove your entry.
+            Your entry is currently still listed as Maybe, this will expire in 12 hours and your saved spot will be removed. Please review and update to Confirmed if you plan to attend or remove yourself if you cannot make it.
 
             Link to the app: {siteUrl}
             """;
@@ -219,7 +221,7 @@ public class RoundNotificationEmailService : IRoundNotificationEmailService
             var body = $"""
             Hi {promotedPlayerName},
 
-            You are now in the golf group.
+            You have been moved from the waitlist to the main group for the upcoming golf round. Congratulations!
 
             Group details
             - Date & time: {formattedDate}
