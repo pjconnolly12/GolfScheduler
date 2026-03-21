@@ -9,6 +9,8 @@ using MyApp.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Options;
+using MyApp.Services;
 
 namespace MyApp.Pages.Entries
 {
@@ -17,11 +19,19 @@ namespace MyApp.Pages.Entries
   {
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IRoundNotificationEmailService _roundNotificationEmailService;
+    private readonly RoundNotificationEmailOptions _roundNotificationEmailOptions;
 
-    public CreateModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+    public CreateModel(
+      ApplicationDbContext context,
+      UserManager<ApplicationUser> userManager,
+      IRoundNotificationEmailService roundNotificationEmailService,
+      IOptions<RoundNotificationEmailOptions> roundNotificationEmailOptions)
     {
       _context = context;
       _userManager = userManager;
+      _roundNotificationEmailService = roundNotificationEmailService;
+      _roundNotificationEmailOptions = roundNotificationEmailOptions.Value;
     }
 
     [BindProperty]
@@ -362,17 +372,72 @@ namespace MyApp.Pages.Entries
         return;
 
       var nextWaitlist = await _context.Entries
+          .Include(e => e.Player)
           .Where(e => e.RoundId == roundId && e.Status == "Waitlist")
           .OrderBy(e => e.CreatedAt)
           .FirstOrDefaultAsync();
 
-      if (nextWaitlist != null)
+      if (nextWaitlist == null)
       {
-        nextWaitlist.Status = "Confirmed";
-        int totalToAdd = 1 + (nextWaitlist.Guests ?? 0);
-        round.Golfers += totalToAdd;
-        await _context.SaveChangesAsync();
+        return;
       }
+
+      nextWaitlist.Status = "Confirmed";
+      int totalToAdd = 1 + (nextWaitlist.Guests ?? 0);
+      round.Golfers += totalToAdd;
+      await _context.SaveChangesAsync();
+
+      await SendWaitlistPromotionNotificationAsync(roundId, nextWaitlist.Id);
+    }
+
+    private async Task SendWaitlistPromotionNotificationAsync(int roundId, int promotedEntryId)
+    {
+      var round = await _context.Rounds
+          .Include(r => r.Entries)
+          .ThenInclude(e => e.Player)
+          .FirstOrDefaultAsync(r => r.Id == roundId);
+
+      if (round == null)
+      {
+        return;
+      }
+
+      var promotedEntry = round.Entries.FirstOrDefault(e => e.Id == promotedEntryId);
+      var recipientEmail = promotedEntry?.Player?.Email;
+      if (promotedEntry == null || string.IsNullOrWhiteSpace(recipientEmail))
+      {
+        return;
+      }
+
+      var promotedPlayerName = GetPlayerDisplayName(promotedEntry.Player);
+      var otherMembers = round.Entries
+          .Where(e => e.Id != promotedEntryId && e.Status.Equals("Confirmed", StringComparison.OrdinalIgnoreCase))
+          .Select(e => GetPlayerDisplayName(e.Player))
+          .Where(name => !string.IsNullOrWhiteSpace(name))
+          .Distinct(StringComparer.OrdinalIgnoreCase)
+          .ToList();
+
+      await _roundNotificationEmailService.SendWaitlistPromotionNotificationAsync(
+          round,
+          recipientEmail,
+          promotedPlayerName,
+          otherMembers,
+          _roundNotificationEmailOptions.SiteUrl);
+    }
+
+    private static string GetPlayerDisplayName(Player? player)
+    {
+      if (player == null)
+      {
+        return "Unknown player";
+      }
+
+      if (!string.IsNullOrWhiteSpace(player.Name))
+      {
+        return player.Name;
+      }
+
+      return !string.IsNullOrWhiteSpace(player.Email) ? player.Email : "Unknown player";
     }
   }
 }
