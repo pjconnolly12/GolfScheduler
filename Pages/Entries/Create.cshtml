@@ -34,7 +34,7 @@
   else
   {
     <div class="form-group">
-      <label asp-for="Entry.Status">Status (Selecting "Maybe" will allow you to save this spot for 24 hours) </label>
+      <label asp-for="Entry.Status">Status (Selecting "Maybe" will allow you to save this spot for 36 hours) </label>
       <select asp-for="Entry.Status" class="form-control">
         <option value="Confirmed">Confirmed</option>
         @if (Model.MaybeStatusAllowed)
@@ -54,7 +54,7 @@
     <div class="form-group">
       <label asp-for="Entry.Guests">Guests</label>
       <input asp-for="Entry.Guests" type="number" class="form-control" min="0" max="2"
-        value="@(Model.Entry.Guests ?? 0)" />
+             value="@(Model.Entry.Guests ?? 0)" />
     </div>
   }
   else
