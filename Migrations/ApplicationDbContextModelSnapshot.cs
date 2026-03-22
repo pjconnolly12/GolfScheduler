@@ -331,6 +331,9 @@ namespace GolfScheduler.Migrations
                     b.Property<int>("Golfers")
                         .HasColumnType("int");
 
+                    b.Property<int?>("Holes")
+                        .HasColumnType("int");
+
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
@@ -355,6 +358,7 @@ namespace GolfScheduler.Migrations
                             Course = "Pebble Beach",
                             Date = new DateTime(2026, 1, 9, 0, 0, 0, 0, DateTimeKind.Local),
                             Golfers = 1,
+                            Holes = 18,
                             Notes = "Morning tee time",
                             Organizer = "",
                             PlayerLimit = 4
@@ -365,6 +369,7 @@ namespace GolfScheduler.Migrations
                             Course = "Augusta National",
                             Date = new DateTime(2026, 1, 16, 0, 0, 0, 0, DateTimeKind.Local),
                             Golfers = 1,
+                            Holes = 18,
                             Notes = "Afternoon round",
                             Organizer = "",
                             PlayerLimit = 4

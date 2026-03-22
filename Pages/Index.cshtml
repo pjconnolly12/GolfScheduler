@@ -45,6 +45,11 @@ else
             </div>
 
             <div class="card-body">
+                @if (round.Holes.HasValue)
+                {
+                    <p class="mb-2"><strong>Holes:</strong> @round.Holes.Value</p>
+                }
+
                 @if (!string.IsNullOrWhiteSpace(round.Notes))
                 {
                     <p class="text-muted mb-3">@round.Notes</p>
