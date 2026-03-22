@@ -338,6 +338,9 @@ namespace GolfScheduler.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("PlayerLimit")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("ReminderSentAtUtc")
                         .HasColumnType("datetime2");
 
@@ -353,7 +356,8 @@ namespace GolfScheduler.Migrations
                             Date = new DateTime(2026, 1, 9, 0, 0, 0, 0, DateTimeKind.Local),
                             Golfers = 1,
                             Notes = "Morning tee time",
-                            Organizer = ""
+                            Organizer = "",
+                            PlayerLimit = 4
                         },
                         new
                         {
@@ -362,7 +366,8 @@ namespace GolfScheduler.Migrations
                             Date = new DateTime(2026, 1, 16, 0, 0, 0, 0, DateTimeKind.Local),
                             Golfers = 1,
                             Notes = "Afternoon round",
-                            Organizer = ""
+                            Organizer = "",
+                            PlayerLimit = 4
                         });
                 });
 
