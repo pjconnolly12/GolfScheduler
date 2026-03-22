@@ -7,6 +7,7 @@ namespace MyApp.Models
     public string Course { get; set; } = string.Empty;
     public string? Notes { get; set; }
     public int Golfers { get; set; } = 1;
+    public int PlayerLimit { get; set; } = 4;
     public string Organizer { get; set; } = string.Empty;
     public DateTime? ReminderSentAtUtc { get; set; }
 

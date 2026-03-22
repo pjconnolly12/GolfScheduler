@@ -30,8 +30,8 @@ namespace MyApp.Data
 
             // Seed test rounds
             modelBuilder.Entity<Round>().HasData(
-                new Round { Id = 1, Date = DateTime.Today.AddDays(3), Course = "Pebble Beach", Notes = "Morning tee time" },
-                new Round { Id = 2, Date = DateTime.Today.AddDays(10), Course = "Augusta National", Notes = "Afternoon round" }
+                new Round { Id = 1, Date = DateTime.Today.AddDays(3), Course = "Pebble Beach", Notes = "Morning tee time", PlayerLimit = 4 },
+                new Round { Id = 2, Date = DateTime.Today.AddDays(10), Course = "Augusta National", Notes = "Afternoon round", PlayerLimit = 4 }
             );
 
             // Relationships

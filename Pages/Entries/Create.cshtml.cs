@@ -140,9 +140,9 @@ namespace MyApp.Pages.Entries
       {
         int totalToAdd = 1 + (Entry.Guests ?? 0);
         int currentPlayers = GetActiveGolferCount(SelectedRound);
-        if (currentPlayers + totalToAdd > 4)
+        if (currentPlayers + totalToAdd > SelectedRound.PlayerLimit)
         {
-          ModelState.AddModelError(string.Empty, "This entry would put the round over 4 players. Reduce the guest count or join the waitlist instead.");
+          ModelState.AddModelError(string.Empty, $"This entry would put the round over {SelectedRound.PlayerLimit} players. Reduce the guest count or join the waitlist instead.");
           return Page();
         }
 
@@ -204,9 +204,9 @@ namespace MyApp.Pages.Entries
         int oldTotal = 1 + (entry.Guests ?? 0);
         int newTotal = 1 + newGuests;
 
-        if (currentPlayers - oldTotal + newTotal > 4)
+        if (currentPlayers - oldTotal + newTotal > round.PlayerLimit)
         {
-          GuestUpdateErrorMessage = "This update would put the round over 4 players. Reduce the guest count to 3 or fewer for this entry.";
+          GuestUpdateErrorMessage = $"This update would put the round over {round.PlayerLimit} players. Reduce the guest count for this entry.";
           return RedirectToPage("/Index");
         }
       }
@@ -368,7 +368,7 @@ namespace MyApp.Pages.Entries
     private async Task PromoteNextWaitlistPlayerAsync(int roundId)
     {
       var round = await _context.Rounds.FindAsync(roundId);
-      if (round == null || round.Golfers >= 4)
+      if (round == null || round.Golfers >= round.PlayerLimit)
         return;
 
       var nextWaitlist = await _context.Entries
@@ -382,8 +382,13 @@ namespace MyApp.Pages.Entries
         return;
       }
 
-      nextWaitlist.Status = "Confirmed";
       int totalToAdd = 1 + (nextWaitlist.Guests ?? 0);
+      if (round.Golfers + totalToAdd > round.PlayerLimit)
+      {
+        return;
+      }
+
+      nextWaitlist.Status = "Confirmed";
       round.Golfers += totalToAdd;
       await _context.SaveChangesAsync();
 
