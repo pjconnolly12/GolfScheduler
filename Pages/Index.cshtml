@@ -40,7 +40,7 @@ else
                     <strong>@round.Course</strong> — @round.Date.ToString("dddd, MMM d, yyyy h:mm tt")
                 </div>
                 <div class="small text-md-end">
-                    @totalPlayers player(s) signed up
+                    @totalPlayers / @round.PlayerLimit player(s) signed up
                 </div>
             </div>
 
@@ -74,7 +74,7 @@ else
                                                 <!-- Update button (only visible to owner) -->
                                                 <form method="post" asp-page="/Entries/Create" asp-page-handler="UpdateGuests" class="guest-update-form d-flex flex-wrap gap-2 align-items-center">
                                                     <input type="hidden" name="entryId" value="@entry.Id" />
-                                                    <input type="number" name="newGuests" value="@(entry.Guests ?? 0)" min="0" max="3"
+                                                    <input type="number" name="newGuests" value="@(entry.Guests ?? 0)" min="0" max="@(Math.Max(round.PlayerLimit - 1, 0))"
                                                         class="form-control form-control-sm" />
                                                     <button type="submit" class="btn btn-sm btn-primary">Update</button>
                                                 </form>
@@ -171,7 +171,7 @@ else
                     </div>
                 }
 
-                @if (totalPlayers < 4)
+                @if (totalPlayers < round.PlayerLimit)
                 {
                     @if (User.Identity?.IsAuthenticated ?? false)
                     {

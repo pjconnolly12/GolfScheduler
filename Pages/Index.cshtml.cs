@@ -70,7 +70,7 @@ public class IndexModel : PageModel
                 .Sum(e => 1 + (e.Guests ?? 0));
 
             // Promote waitlist entries
-            while (currentPlayers < 4)
+            while (currentPlayers < round.PlayerLimit)
             {
                 var nextWaitlist = round.Entries
                     .Where(e => e.Status == "Waitlist")
@@ -79,8 +79,13 @@ public class IndexModel : PageModel
 
                 if (nextWaitlist == null) break;
 
-                nextWaitlist.Status = "Confirmed";
                 int totalToAdd = 1 + (nextWaitlist.Guests ?? 0);
+                if (currentPlayers + totalToAdd > round.PlayerLimit)
+                {
+                    break;
+                }
+
+                nextWaitlist.Status = "Confirmed";
                 currentPlayers += totalToAdd;
                 round.Golfers += totalToAdd;
 
@@ -130,7 +135,7 @@ public class IndexModel : PageModel
 
         if (round == null) return;
 
-        while (round.Golfers < 4)
+        while (round.Golfers < round.PlayerLimit)
         {
             var nextWaitlist = await _context.Entries
                 .Include(e => e.Player)
@@ -140,8 +145,13 @@ public class IndexModel : PageModel
 
             if (nextWaitlist == null) break;
 
-            nextWaitlist.Status = "Confirmed";
             int totalToAdd = 1 + (nextWaitlist.Guests ?? 0);
+            if (round.Golfers + totalToAdd > round.PlayerLimit)
+            {
+                break;
+            }
+
+            nextWaitlist.Status = "Confirmed";
             round.Golfers += totalToAdd;
 
             _context.Entries.Update(nextWaitlist);
@@ -202,4 +212,3 @@ public class IndexModel : PageModel
         return !string.IsNullOrWhiteSpace(player.Email) ? player.Email : "Unknown player";
     }
 }
-

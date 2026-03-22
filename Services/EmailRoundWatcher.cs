@@ -472,7 +472,8 @@ namespace MyApp.Services
         {
           Course = courseName,
           Date = date.Value.Date + teeTime.Value,
-          Golfers = playerCount
+          Golfers = 0,
+          PlayerLimit = playerCount > 0 ? playerCount : 4
         };
       }
       catch (Exception ex)
