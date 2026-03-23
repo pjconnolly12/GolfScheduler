@@ -39,6 +39,14 @@ public interface IRoundNotificationEmailService
         IReadOnlyCollection<string> otherMembers,
         string siteUrl,
         CancellationToken cancellationToken = default);
+
+    Task<bool> SendEntryConfirmationAsync(
+        Round round,
+        Entry entry,
+        string recipient,
+        string playerName,
+        string siteUrl,
+        CancellationToken cancellationToken = default);
 }
 
 public class RoundNotificationEmailOptions
@@ -249,6 +257,51 @@ public class RoundNotificationEmailService : IRoundNotificationEmailService
         }
     }
 
+    public async Task<bool> SendEntryConfirmationAsync(
+        Round round,
+        Entry entry,
+        string recipient,
+        string playerName,
+        string siteUrl,
+        CancellationToken cancellationToken = default)
+    {
+        var recipients = new[] { recipient };
+        if (!CanSendEmail(recipients))
+        {
+            return false;
+        }
+
+        try
+        {
+            var service = await CreateGmailServiceAsync(cancellationToken);
+            var confirmationMessage = GetEntryConfirmationMessage(entry);
+            var subject = GetEntryConfirmationSubject(round, entry);
+            var body = $"""
+            Hi {playerName},
+
+            {confirmationMessage}
+
+            {FormatRoundDetails(round, entry)}
+
+            You can review or update your entry in the app if anything changes.
+
+            Link to the app: {siteUrl}
+            """;
+
+            var rawMessage = BuildRawMessage(recipients, subject, body, _options.FromAddress);
+            var gmailMessage = new Message { Raw = rawMessage };
+
+            cancellationToken.ThrowIfCancellationRequested();
+            await service.Users.Messages.Send(gmailMessage, _options.SenderUserId).ExecuteAsync(cancellationToken);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send entry confirmation through Gmail API.");
+            return false;
+        }
+    }
+
     private bool CanSendEmail(IReadOnlyCollection<string> recipients)
     {
         if (recipients.Count == 0)
@@ -281,6 +334,54 @@ public class RoundNotificationEmailService : IRoundNotificationEmailService
         {
             builder.AppendLine($"- {item}");
         }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    private static string GetEntryConfirmationSubject(Round round, Entry entry)
+    {
+        if (entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"You've joined the waitlist for {round.Course}";
+        }
+
+        if (entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"Your golf round entry for {round.Course} is saved as Maybe";
+        }
+
+        return $"Your golf round entry for {round.Course} is confirmed";
+    }
+
+    private static string GetEntryConfirmationMessage(Entry entry)
+    {
+        if (entry.Status.Equals("Waitlist", StringComparison.OrdinalIgnoreCase))
+        {
+            return "You've successfully joined the waitlist. Here are your round details:";
+        }
+
+        if (entry.Status.Equals("Maybe", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Your entry has been saved as Maybe. Here are your round details:";
+        }
+
+        return "Your entry has been confirmed. Here are your round details:";
+    }
+
+    private static string FormatRoundDetails(Round round, Entry entry)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("Round details");
+        builder.AppendLine($"- Date & time: {round.Date:dddd, MMMM d, yyyy 'at' h:mm tt}");
+        builder.AppendLine($"- Course: {round.Course}");
+
+        if (round.Holes.HasValue)
+        {
+            builder.AppendLine($"- Holes: {round.Holes.Value}");
+        }
+
+        builder.AppendLine($"- Entry status: {entry.Status}");
+        builder.AppendLine($"- Guests: {entry.Guests ?? 0}");
 
         return builder.ToString().TrimEnd();
     }

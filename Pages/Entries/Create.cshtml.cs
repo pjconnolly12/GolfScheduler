@@ -153,6 +153,8 @@ namespace MyApp.Pages.Entries
       _context.Entries.Add(Entry);
       await _context.SaveChangesAsync();
 
+      await SendEntryConfirmationNotificationAsync(SelectedRound, Entry, player);
+
       return RedirectToPage("/Index");
     }
 
@@ -427,6 +429,22 @@ namespace MyApp.Pages.Entries
           recipientEmail,
           promotedPlayerName,
           otherMembers,
+          _roundNotificationEmailOptions.SiteUrl);
+    }
+
+    private async Task SendEntryConfirmationNotificationAsync(Round round, Entry entry, Player player)
+    {
+      if (string.IsNullOrWhiteSpace(player.Email))
+      {
+        return;
+      }
+
+      var playerDisplayName = GetPlayerDisplayName(player);
+      await _roundNotificationEmailService.SendEntryConfirmationAsync(
+          round,
+          entry,
+          player.Email,
+          playerDisplayName,
           _roundNotificationEmailOptions.SiteUrl);
     }
 
