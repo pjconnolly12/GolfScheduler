@@ -13,7 +13,7 @@
     @if (Model.SelectedRound != null)
     {
       <p class="form-control-plaintext">
-        @Model.SelectedRound.Course - @Model.SelectedRound.Date.ToString("dddd, MMM d, yyyy h:mm tt")
+        @Model.SelectedRound.Course - @Model.SelectedRound.Date.ToString("dddd, MMM d, yyyy h:mm tt")@(Model.SelectedRound.Holes.HasValue ? $" ({Model.SelectedRound.Holes.Value} holes)" : string.Empty)
       </p>
       <input type="hidden" asp-for="Entry.RoundId" value="@Model.SelectedRound.Id" />
     }
