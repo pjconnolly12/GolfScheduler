@@ -464,6 +464,10 @@ namespace MyApp.Services
         var playerMatch = Regex.Match(body, @"(\d+)\s*Player", RegexOptions.IgnoreCase);
         int playerCount = playerMatch.Success ? int.Parse(playerMatch.Groups[1].Value) : 0;
 
+        // Match notes-based hole count (e.g. Notes: 9 Holes)
+        var holesMatch = Regex.Match(body, @"Notes:\s*(\d+)\s*Holes?", RegexOptions.IgnoreCase);
+        int? holes = holesMatch.Success ? int.Parse(holesMatch.Groups[1].Value) : null;
+
         // Ensure date/time are valid before creating a round
         if (date == null || teeTime == null)
           return null;
@@ -472,6 +476,7 @@ namespace MyApp.Services
         {
           Course = courseName,
           Date = date.Value.Date + teeTime.Value,
+          Holes = holes,
           Golfers = 0,
           PlayerLimit = playerCount > 0 ? playerCount : 4
         };

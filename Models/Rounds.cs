@@ -6,6 +6,7 @@ namespace MyApp.Models
     public DateTime Date { get; set; }
     public string Course { get; set; } = string.Empty;
     public string? Notes { get; set; }
+    public int? Holes { get; set; }
     public int Golfers { get; set; } = 1;
     public int PlayerLimit { get; set; } = 4;
     public string Organizer { get; set; } = string.Empty;
