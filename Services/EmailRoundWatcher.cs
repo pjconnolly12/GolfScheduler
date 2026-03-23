@@ -464,6 +464,12 @@ namespace MyApp.Services
         var playerMatch = Regex.Match(body, @"(\d+)\s*Player", RegexOptions.IgnoreCase);
         int playerCount = playerMatch.Success ? int.Parse(playerMatch.Groups[1].Value) : 0;
 
+        if (playerCount == 1)
+        {
+          _logger.LogInformation("Ignoring tee time confirmation email because the player count was 1.");
+          return null;
+        }
+
         // Match notes-based hole count (e.g. Notes: 9 Holes)
         var holesMatch = Regex.Match(body, @"Notes:\s*(\d+)\s*Holes?", RegexOptions.IgnoreCase);
         int? holes = holesMatch.Success ? int.Parse(holesMatch.Groups[1].Value) : null;
