@@ -1,5 +1,11 @@
 # Deployment Configuration
 
+This repository ships with a **Docker-based production deployment model**:
+
+- `Dockerfile` (multi-stage .NET 8 build/runtime image)
+- `docker-compose.production.yml` (single-service production compose stack)
+- `PRODUCTION_RUNBOOK.md` (operations runbook)
+
 This application supports **production-safe configuration** using host-provided environment variables and/or your platform secret manager.
 
 > Do not commit live credentials to source control.
@@ -84,3 +90,18 @@ dotnet GolfScheduler.dll
 - Startup schema checks are intentionally minimal: only pending-migration detection.
 - If schema is incorrect, startup throws immediately to avoid serving with a partially compatible model.
 - `DistributionListMembers` is managed by EF migration `20260304000000_AddUserDistributionList`; manual bootstrap SQL is no longer needed.
+
+## Docker quick start
+
+```bash
+# Build
+docker compose -f docker-compose.production.yml build
+
+# Run
+docker compose -f docker-compose.production.yml up -d web
+
+# View logs
+docker compose -f docker-compose.production.yml logs -f web
+```
+
+For full operational procedures (backups, restore, rollback, secrets, Gmail setup), see `PRODUCTION_RUNBOOK.md`.
