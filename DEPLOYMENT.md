@@ -54,3 +54,33 @@ Use your host's secret facility (for example: Azure App Service app settings + K
 - Gmail credentials file mount path and token storage path
 
 Non-secret defaults can remain in `appsettings.Production.json`.
+
+## Database migration procedure (run before traffic)
+
+The app now **fails fast** on startup when there are pending EF Core migrations. It does not auto-apply schema changes at runtime.
+
+Run migrations as a dedicated deployment step, then start/restart the app:
+
+```bash
+# 1) Build artifact/image
+dotnet publish -c Release
+
+# 2) Apply migrations against the target production database
+dotnet ef database update --project GolfScheduler.csproj
+
+# 3) Start the app only after migrations complete successfully
+dotnet GolfScheduler.dll
+```
+
+### Recommended rollout order
+
+1. Put instance(s) in maintenance / remove from load balancer.
+2. Run `dotnet ef database update` with production connection settings.
+3. Verify migration completion (EF reports success and updates `__EFMigrationsHistory`).
+4. Start new app instance(s) and return them to the load balancer.
+
+### Why this is required
+
+- Startup schema checks are intentionally minimal: only pending-migration detection.
+- If schema is incorrect, startup throws immediately to avoid serving with a partially compatible model.
+- `DistributionListMembers` is managed by EF migration `20260304000000_AddUserDistributionList`; manual bootstrap SQL is no longer needed.
