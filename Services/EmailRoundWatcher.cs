@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Identity;
 using MyApp.Data;
 using MyApp.Models;
@@ -23,12 +24,16 @@ namespace MyApp.Services
   {
     private readonly ILogger<EmailRoundWatcher> _logger;
     private readonly IServiceProvider _services;
-    private const string NotificationOwnerEmail = "pjconnolly12@gmail.com";
+    private readonly RoundOperationsOptions _roundOperationsOptions;
 
-    public EmailRoundWatcher(ILogger<EmailRoundWatcher> logger, IServiceProvider services)
+    public EmailRoundWatcher(
+      ILogger<EmailRoundWatcher> logger,
+      IServiceProvider services,
+      IOptions<RoundOperationsOptions> roundOperationsOptions)
     {
       _logger = logger;
       _services = services;
+      _roundOperationsOptions = roundOperationsOptions.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -97,10 +102,14 @@ namespace MyApp.Services
     {
       var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-      var organizer = await userManager.FindByEmailAsync(NotificationOwnerEmail);
+      var organizer = await ResolveUserByEmailOrRoleAsync(
+        userManager,
+        _roundOperationsOptions.NotificationOwnerEmail,
+        _roundOperationsOptions.RoundOrganizerRole);
       if (organizer == null)
       {
-        _logger.LogWarning("Round created but organizer {Email} was not found for auto-enrollment.", NotificationOwnerEmail);
+        _logger.LogWarning(
+          "Round created but no organizer was resolved from RoundOperations:NotificationOwnerEmail or RoundOperations:RoundOrganizerRole for auto-enrollment.");
         return;
       }
 
@@ -214,10 +223,14 @@ namespace MyApp.Services
       var roundNotificationEmailService = serviceProvider.GetRequiredService<IRoundNotificationEmailService>();
       var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RoundNotificationEmailOptions>>().Value;
 
-      var organizer = await userManager.FindByEmailAsync(NotificationOwnerEmail);
+      var organizer = await ResolveUserByEmailOrRoleAsync(
+        userManager,
+        _roundOperationsOptions.NotificationOwnerEmail,
+        _roundOperationsOptions.NotificationOwnerRole);
       if (organizer == null)
       {
-        _logger.LogWarning("Round created but notification owner {Email} was not found.", NotificationOwnerEmail);
+        _logger.LogWarning(
+          "Round created but no notification owner was resolved from RoundOperations:NotificationOwnerEmail or RoundOperations:NotificationOwnerRole.");
         return;
       }
 
@@ -235,7 +248,7 @@ namespace MyApp.Services
 
       if (recipientEmails.Count == 0)
       {
-        _logger.LogInformation("Round created but no distribution list recipients found for {Email}.", NotificationOwnerEmail);
+        _logger.LogInformation("Round created but no distribution list recipients found for notification owner {OwnerUserId}.", organizer.Id);
         return;
       }
 
@@ -416,6 +429,46 @@ namespace MyApp.Services
     private bool IsTeeTimeConfirmation(string subject)
     {
       return subject.Contains("Tee Time Confirmation", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<ApplicationUser?> ResolveUserByEmailOrRoleAsync(
+      UserManager<ApplicationUser> userManager,
+      string? preferredEmail,
+      string? roleName)
+    {
+      if (!string.IsNullOrWhiteSpace(preferredEmail))
+      {
+        var userByEmail = await userManager.FindByEmailAsync(preferredEmail);
+        if (userByEmail != null)
+        {
+          return userByEmail;
+        }
+      }
+
+      if (string.IsNullOrWhiteSpace(roleName))
+      {
+        return null;
+      }
+
+      var roleUsers = await userManager.GetUsersInRoleAsync(roleName);
+      if (roleUsers.Count == 0)
+      {
+        return null;
+      }
+
+      if (!string.IsNullOrWhiteSpace(preferredEmail))
+      {
+        var matchingRoleUser = roleUsers.FirstOrDefault(u =>
+          string.Equals(u.Email, preferredEmail, StringComparison.OrdinalIgnoreCase));
+        if (matchingRoleUser != null)
+        {
+          return matchingRoleUser;
+        }
+      }
+
+      return roleUsers
+        .OrderBy(u => u.Email ?? u.UserName ?? u.Id, StringComparer.OrdinalIgnoreCase)
+        .FirstOrDefault();
     }
 
     private Round? ParseRoundFromEmail(string subject, string body)

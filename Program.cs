@@ -28,6 +28,9 @@ builder.Services
     .Bind(builder.Configuration.GetSection("RoundNotificationEmail"))
     .ValidateDataAnnotations()
     .ValidateOnStart();
+builder.Services
+    .AddOptions<RoundOperationsOptions>()
+    .Bind(builder.Configuration.GetSection("RoundOperations"));
 builder.Services.AddScoped<IRoundNotificationEmailService, RoundNotificationEmailService>();
 
 builder.Services.AddAuthentication()

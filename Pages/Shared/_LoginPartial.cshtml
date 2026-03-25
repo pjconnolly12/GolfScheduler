@@ -1,16 +1,21 @@
 @using System
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.Extensions.Options
 @using MyApp.Models
+@using MyApp.Services
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
+@inject IOptions<RoundOperationsOptions> RoundOperationsOptions
 
 <ul class="navbar-nav">
 @if (SignInManager.IsSignedIn(User))
 {
     var currentUser = await UserManager.GetUserAsync(User);
-    var currentEmail = currentUser is null ? null : await UserManager.GetEmailAsync(currentUser);
-    var showDistributionList = string.Equals(currentEmail, "pjconnolly12@gmail.com", StringComparison.OrdinalIgnoreCase);
+    var distributionRole = RoundOperationsOptions.Value.DistributionListManagerRole;
+    var showDistributionList = currentUser is not null
+        && !string.IsNullOrWhiteSpace(distributionRole)
+        && await UserManager.IsInRoleAsync(currentUser, distributionRole);
 
     <li class="nav-item">
         <a id="manage" class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">Hello @UserManager.GetUserName(User)!</a>
