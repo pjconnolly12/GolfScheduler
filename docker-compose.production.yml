@@ -1,0 +1,30 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: golfscheduler:prod
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
+      Authentication__Google__ClientId: ${Authentication__Google__ClientId}
+      Authentication__Google__ClientSecret: ${Authentication__Google__ClientSecret}
+      RoundNotificationEmail__CredentialsFilePath: /run/secrets/gmail_credentials.json
+      RoundNotificationEmail__TokenDirectoryPath: /var/opt/golfscheduler/google-token
+      RoundNotificationEmail__SenderUserId: ${RoundNotificationEmail__SenderUserId:-me}
+      RoundNotificationEmail__FromAddress: ${RoundNotificationEmail__FromAddress}
+      RoundNotificationEmail__ApplicationName: ${RoundNotificationEmail__ApplicationName:-Golf Scheduler}
+      RoundNotificationEmail__SiteUrl: ${RoundNotificationEmail__SiteUrl}
+    volumes:
+      # Mount Gmail OAuth client JSON from host secret storage.
+      - type: bind
+        source: /opt/golfscheduler/secrets/gmail_credentials.json
+        target: /run/secrets/gmail_credentials.json
+        read_only: true
+      # Persist Gmail refresh token cache across container restarts.
+      - type: bind
+        source: /opt/golfscheduler/state/google-token
+        target: /var/opt/golfscheduler/google-token
