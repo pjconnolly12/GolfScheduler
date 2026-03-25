@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using MyApp.Data;
 using MyApp.Models;
+using MyApp.Services;
 
 namespace MyApp.Pages;
 
@@ -13,11 +15,16 @@ public class DistributionListModel : PageModel
 {
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoundOperationsOptions _roundOperationsOptions;
 
-    public DistributionListModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+    public DistributionListModel(
+        ApplicationDbContext context,
+        UserManager<ApplicationUser> userManager,
+        IOptions<RoundOperationsOptions> roundOperationsOptions)
     {
         _context = context;
         _userManager = userManager;
+        _roundOperationsOptions = roundOperationsOptions.Value;
     }
 
     public List<UserDisplay> AvailableUsers { get; private set; } = new();
@@ -33,6 +40,10 @@ public class DistributionListModel : PageModel
         {
             return Challenge();
         }
+        if (!await CanManageDistributionListAsync(currentUser))
+        {
+            return Forbid();
+        }
 
         await LoadListsAsync(currentUser.Id);
         return Page();
@@ -44,6 +55,10 @@ public class DistributionListModel : PageModel
         if (currentUser is null)
         {
             return Challenge();
+        }
+        if (!await CanManageDistributionListAsync(currentUser))
+        {
+            return Forbid();
         }
 
         if (string.IsNullOrWhiteSpace(SelectedUserId))
@@ -83,6 +98,10 @@ public class DistributionListModel : PageModel
         if (currentUser is null)
         {
             return Challenge();
+        }
+        if (!await CanManageDistributionListAsync(currentUser))
+        {
+            return Forbid();
         }
 
         var member = await _context.DistributionListMembers
@@ -125,6 +144,17 @@ public class DistributionListModel : PageModel
             })
             .OrderBy(u => u.UserName)
             .ToListAsync();
+    }
+
+    private async Task<bool> CanManageDistributionListAsync(ApplicationUser user)
+    {
+        var requiredRole = _roundOperationsOptions.DistributionListManagerRole;
+        if (string.IsNullOrWhiteSpace(requiredRole))
+        {
+            return false;
+        }
+
+        return await _userManager.IsInRoleAsync(user, requiredRole);
     }
 
     public class UserDisplay
