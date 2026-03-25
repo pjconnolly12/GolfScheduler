@@ -350,30 +350,6 @@ namespace GolfScheduler.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Rounds");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Course = "Pebble Beach",
-                            Date = new DateTime(2026, 1, 9, 0, 0, 0, 0, DateTimeKind.Local),
-                            Golfers = 1,
-                            Holes = 18,
-                            Notes = "Morning tee time",
-                            Organizer = "",
-                            PlayerLimit = 4
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Course = "Augusta National",
-                            Date = new DateTime(2026, 1, 16, 0, 0, 0, 0, DateTimeKind.Local),
-                            Golfers = 1,
-                            Holes = 18,
-                            Notes = "Afternoon round",
-                            Organizer = "",
-                            PlayerLimit = 4
-                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
