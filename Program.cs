@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 
 var builder = WebApplication.CreateBuilder(args);
+ValidateProductionConfiguration(builder);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -22,7 +23,11 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>();
 
 builder.Services.AddScoped<PlayerService>();
-builder.Services.Configure<RoundNotificationEmailOptions>(builder.Configuration.GetSection("RoundNotificationEmail"));
+builder.Services
+    .AddOptions<RoundNotificationEmailOptions>()
+    .Bind(builder.Configuration.GetSection("RoundNotificationEmail"))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 builder.Services.AddScoped<IRoundNotificationEmailService, RoundNotificationEmailService>();
 
 builder.Services.AddAuthentication()
@@ -75,3 +80,49 @@ app.UseAuthorization();
 app.MapRazorPages();
 
 app.Run();
+
+static void ValidateProductionConfiguration(WebApplicationBuilder builder)
+{
+    if (!builder.Environment.IsProduction())
+    {
+        return;
+    }
+
+    var missing = new List<string>();
+    var configuration = builder.Configuration;
+
+    static void RequireValue(IConfiguration configuration, string key, ICollection<string> missing)
+    {
+        if (string.IsNullOrWhiteSpace(configuration[key]))
+        {
+            missing.Add(key.Replace(':', '_'));
+        }
+    }
+
+    RequireValue(configuration, "ConnectionStrings:DefaultConnection", missing);
+    RequireValue(configuration, "Authentication:Google:ClientId", missing);
+    RequireValue(configuration, "Authentication:Google:ClientSecret", missing);
+    RequireValue(configuration, "RoundNotificationEmail:CredentialsFilePath", missing);
+    RequireValue(configuration, "RoundNotificationEmail:TokenDirectoryPath", missing);
+    RequireValue(configuration, "RoundNotificationEmail:SenderUserId", missing);
+    RequireValue(configuration, "RoundNotificationEmail:FromAddress", missing);
+    RequireValue(configuration, "RoundNotificationEmail:ApplicationName", missing);
+    RequireValue(configuration, "RoundNotificationEmail:SiteUrl", missing);
+
+    var connectionString = configuration.GetConnectionString("DefaultConnection");
+    if (!string.IsNullOrWhiteSpace(connectionString)
+        && (connectionString.Contains("(localdb)", StringComparison.OrdinalIgnoreCase)
+            || connectionString.Contains("mssqllocaldb", StringComparison.OrdinalIgnoreCase)))
+    {
+        missing.Add("ConnectionStrings__DefaultConnection (must reference a real SQL Server instance, not LocalDB)");
+    }
+
+    if (missing.Count == 0)
+    {
+        return;
+    }
+
+    throw new InvalidOperationException(
+        $"Missing required production configuration values: {string.Join(", ", missing)}. " +
+        "Provide these values through environment variables or your host secret manager.");
+}
