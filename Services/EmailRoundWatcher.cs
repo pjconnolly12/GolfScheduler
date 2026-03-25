@@ -25,15 +25,18 @@ namespace MyApp.Services
     private readonly ILogger<EmailRoundWatcher> _logger;
     private readonly IServiceProvider _services;
     private readonly RoundOperationsOptions _roundOperationsOptions;
+    private readonly RoundNotificationEmailOptions _roundNotificationEmailOptions;
 
     public EmailRoundWatcher(
       ILogger<EmailRoundWatcher> logger,
       IServiceProvider services,
-      IOptions<RoundOperationsOptions> roundOperationsOptions)
+      IOptions<RoundOperationsOptions> roundOperationsOptions,
+      IOptions<RoundNotificationEmailOptions> roundNotificationEmailOptions)
     {
       _logger = logger;
       _services = services;
       _roundOperationsOptions = roundOperationsOptions.Value;
+      _roundNotificationEmailOptions = roundNotificationEmailOptions.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -185,7 +188,6 @@ namespace MyApp.Services
       }
 
       var roundNotificationEmailService = serviceProvider.GetRequiredService<IRoundNotificationEmailService>();
-      var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RoundNotificationEmailOptions>>().Value;
 
       foreach (var entry in entriesToRemind)
       {
@@ -200,7 +202,7 @@ namespace MyApp.Services
         var reminderSent = await roundNotificationEmailService.SendMaybeEntryExpirationReminderAsync(
           entry.Round,
           recipientEmail,
-          options.SiteUrl,
+          _roundNotificationEmailOptions.SiteUrl,
           stoppingToken);
 
         if (reminderSent)
@@ -221,7 +223,6 @@ namespace MyApp.Services
     {
       var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
       var roundNotificationEmailService = serviceProvider.GetRequiredService<IRoundNotificationEmailService>();
-      var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RoundNotificationEmailOptions>>().Value;
 
       var organizer = await ResolveUserByEmailOrRoleAsync(
         userManager,
@@ -256,7 +257,7 @@ namespace MyApp.Services
         organizer,
         round,
         recipientEmails,
-        options.SiteUrl,
+        _roundNotificationEmailOptions.SiteUrl,
         stoppingToken);
     }
 
@@ -281,7 +282,6 @@ namespace MyApp.Services
       }
 
       var roundNotificationEmailService = serviceProvider.GetRequiredService<IRoundNotificationEmailService>();
-      var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RoundNotificationEmailOptions>>().Value;
 
       foreach (var round in roundsToRemind)
       {
@@ -319,7 +319,7 @@ namespace MyApp.Services
           recipientEmails,
           confirmedNames,
           waitlistNames,
-          options.SiteUrl,
+          _roundNotificationEmailOptions.SiteUrl,
           stoppingToken);
 
         if (reminderSent)
@@ -348,29 +348,27 @@ namespace MyApp.Services
     private async Task<List<(string Subject, string Body)>> FetchNewEmailsAsync()
     {
       string[] Scopes = { GmailService.Scope.GmailModify };
-      string ApplicationName = "Golf Scheduler";
 
       UserCredential credential;
-      using (var stream = new FileStream("Secrets/credentials.json", FileMode.Open, FileAccess.Read))
+      using (var stream = new FileStream(_roundNotificationEmailOptions.CredentialsFilePath, FileMode.Open, FileAccess.Read))
       {
-        string credPath = "token.json";
         credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
             GoogleClientSecrets.FromStream(stream).Secrets,
             Scopes,
             "user",
             CancellationToken.None,
-            new FileDataStore(credPath, true));
+            new FileDataStore(_roundNotificationEmailOptions.TokenDirectoryPath, true));
       }
 
       // Create Gmail API service
       var service = new GmailService(new BaseClientService.Initializer()
       {
         HttpClientInitializer = credential,
-        ApplicationName = ApplicationName,
+        ApplicationName = _roundNotificationEmailOptions.ApplicationName,
       });
 
       // Get unread messages
-      var request = service.Users.Messages.List("me");
+      var request = service.Users.Messages.List(_roundNotificationEmailOptions.SenderUserId);
       request.LabelIds = "INBOX";
       request.Q = "is:unread subject:(Tee Time Confirmation)";
       var response = await request.ExecuteAsync();
@@ -381,7 +379,7 @@ namespace MyApp.Services
 
       foreach (var messageItem in response.Messages)
       {
-        var msg = await service.Users.Messages.Get("me", messageItem.Id).ExecuteAsync();
+        var msg = await service.Users.Messages.Get(_roundNotificationEmailOptions.SenderUserId, messageItem.Id).ExecuteAsync();
 
         string subject = msg.Payload.Headers.FirstOrDefault(h => h.Name == "Subject")?.Value ?? "(no subject)";
         string body = GetPlainTextFromMessage(msg);
@@ -392,7 +390,7 @@ namespace MyApp.Services
         await service.Users.Messages.Modify(new ModifyMessageRequest
         {
           RemoveLabelIds = new[] { "UNREAD" }
-        }, "me", messageItem.Id).ExecuteAsync();
+        }, _roundNotificationEmailOptions.SenderUserId, messageItem.Id).ExecuteAsync();
       }
 
       return emails;
