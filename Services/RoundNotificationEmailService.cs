@@ -1,4 +1,5 @@
 using System.Text;
+using System.ComponentModel.DataAnnotations;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Gmail.v1;
 using Google.Apis.Gmail.v1.Data;
@@ -51,11 +52,17 @@ public interface IRoundNotificationEmailService
 
 public class RoundNotificationEmailOptions
 {
+    [Required]
     public string CredentialsFilePath { get; set; } = "Secrets/credentials.json";
+    [Required]
     public string TokenDirectoryPath { get; set; } = "token-round-notifications";
+    [Required]
     public string SenderUserId { get; set; } = "me";
+    [Required]
     public string? FromAddress { get; set; }
+    [Required]
     public string ApplicationName { get; set; } = "Golf Scheduler";
+    [Required]
     public string SiteUrl { get; set; } = "https://localhost:5001";
 }
 
