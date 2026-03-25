@@ -28,12 +28,6 @@ namespace MyApp.Data
                 .HasForeignKey<Player>(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Seed test rounds
-            modelBuilder.Entity<Round>().HasData(
-                new Round { Id = 1, Date = DateTime.Today.AddDays(3), Course = "Pebble Beach", Notes = "Morning tee time", Holes = 18, PlayerLimit = 4 },
-                new Round { Id = 2, Date = DateTime.Today.AddDays(10), Course = "Augusta National", Notes = "Afternoon round", Holes = 18, PlayerLimit = 4 }
-            );
-
             // Relationships
             modelBuilder.Entity<Entry>()
                 .HasOne(e => e.Player)

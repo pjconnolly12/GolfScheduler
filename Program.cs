@@ -55,6 +55,11 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+if (app.Environment.IsDevelopment())
+{
+    await DevelopmentRoundSeeder.SeedAsync(app.Services);
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
