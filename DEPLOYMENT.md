@@ -27,6 +27,8 @@ Configure the following keys at deploy time:
 
 `RoundNotificationEmail__SiteUrl` must be the public URL users can access (for example, `https://golf.example.com`).
 
+`RoundNotificationEmail__TokenDirectoryPath` must point to **persistent, writable storage** in production. If your host only provides ephemeral or read-only storage, token refresh data will be lost between restarts and Gmail API authorization can break. In that case, either mount persistent writable storage for token files or redesign the auth flow to avoid local token persistence.
+
 ## Example (Linux container/App Service style)
 
 ```bash
