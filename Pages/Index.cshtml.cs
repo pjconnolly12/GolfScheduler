@@ -12,22 +12,27 @@ public class IndexModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IRoundNotificationEmailService _roundNotificationEmailService;
     private readonly RoundNotificationEmailOptions _roundNotificationEmailOptions;
+    private readonly RoundOperationsOptions _roundOperationsOptions;
 
     public IndexModel(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         IRoundNotificationEmailService roundNotificationEmailService,
-        IOptions<RoundNotificationEmailOptions> roundNotificationEmailOptions)
+        IOptions<RoundNotificationEmailOptions> roundNotificationEmailOptions,
+        IOptions<RoundOperationsOptions> roundOperationsOptions)
     {
         _context = context;
         _userManager = userManager;
         _roundNotificationEmailService = roundNotificationEmailService;
         _roundNotificationEmailOptions = roundNotificationEmailOptions.Value;
+        _roundOperationsOptions = roundOperationsOptions.Value;
     }
 
     public List<Round> UpcomingRounds { get; set; } = new();
 
     public string? CurrentPlayerId { get; set; }
+
+    public bool CanManuallyAddRounds { get; set; }
 
     public async Task OnGetAsync()
     {
@@ -45,6 +50,10 @@ public class IndexModel : PageModel
 
             // Fallback to the user's PlayerId if a player record isn't loaded yet so owner controls remain visible
             CurrentPlayerId = player?.Id ?? user.PlayerId;
+
+            var organizerRole = _roundOperationsOptions.RoundOrganizerRole;
+            CanManuallyAddRounds = !string.IsNullOrWhiteSpace(organizerRole)
+                && await _userManager.IsInRoleAsync(user, organizerRole);
         }
 
         // --- 1. Remove expired entries ---

@@ -6,6 +6,13 @@
 
 <h1 class="mb-3">Upcoming Rounds</h1>
 
+@if (Model.CanManuallyAddRounds)
+{
+    <div class="mb-3">
+        <a asp-page="/Rounds/Create" class="btn btn-outline-success">Add Round Manually</a>
+    </div>
+}
+
 @if (!string.IsNullOrWhiteSpace(TempData["GuestUpdateErrorMessage"] as string))
 {
     <div class="alert alert-danger" role="alert">
