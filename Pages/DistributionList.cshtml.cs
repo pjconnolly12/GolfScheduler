@@ -149,7 +149,7 @@ public class DistributionListModel : PageModel
     private async Task<bool> CanManageDistributionListAsync(ApplicationUser user)
     {
         var requiredRole = _roundOperationsOptions.DistributionListManagerRole;
-        if (string.IsNullOrWhiteSpace(requiredRole))
+        if (!_userManager.SupportsUserRole || string.IsNullOrWhiteSpace(requiredRole))
         {
             return false;
         }

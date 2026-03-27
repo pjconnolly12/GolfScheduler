@@ -13,7 +13,8 @@
 {
     var currentUser = await UserManager.GetUserAsync(User);
     var distributionRole = RoundOperationsOptions.Value.DistributionListManagerRole;
-    var showDistributionList = currentUser is not null
+    var showDistributionList = UserManager.SupportsUserRole
+        && currentUser is not null
         && !string.IsNullOrWhiteSpace(distributionRole)
         && await UserManager.IsInRoleAsync(currentUser, distributionRole);
 

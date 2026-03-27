@@ -1,0 +1,49 @@
+@page
+@model MyApp.Pages.Rounds.CreateModel
+@{
+    ViewData["Title"] = "Add Round";
+}
+
+<h2>Add Round</h2>
+<p class="text-muted">Manual round creation is restricted to admins.</p>
+
+<form method="post" class="mt-3">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Input.Course"></label>
+        <input asp-for="Input.Course" class="form-control" />
+        <span asp-validation-for="Input.Course" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Input.Date"></label>
+        <input asp-for="Input.Date" type="datetime-local" class="form-control" />
+        <span asp-validation-for="Input.Date" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Input.Holes"></label>
+        <input asp-for="Input.Holes" type="number" min="1" max="18" class="form-control" />
+        <span asp-validation-for="Input.Holes" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Input.PlayerLimit"></label>
+        <input asp-for="Input.PlayerLimit" type="number" min="1" max="32" class="form-control" />
+        <span asp-validation-for="Input.PlayerLimit" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Input.Notes"></label>
+        <textarea asp-for="Input.Notes" class="form-control" rows="4"></textarea>
+        <span asp-validation-for="Input.Notes" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-success">Create Round</button>
+    <a asp-page="/Index" class="btn btn-outline-secondary ms-2">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

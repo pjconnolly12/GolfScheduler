@@ -448,6 +448,11 @@ namespace MyApp.Services
         return null;
       }
 
+      if (!userManager.SupportsUserRole)
+      {
+        return null;
+      }
+
       var roleUsers = await userManager.GetUsersInRoleAsync(roleName);
       if (roleUsers.Count == 0)
       {
