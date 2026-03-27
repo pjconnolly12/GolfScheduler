@@ -20,6 +20,7 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;
 })
+.AddRoles<IdentityRole>()
 .AddEntityFrameworkStores<ApplicationDbContext>();
 
 builder.Services.AddScoped<PlayerService>();
@@ -60,6 +61,8 @@ if (app.Environment.IsDevelopment())
     await DevelopmentRoundSeeder.SeedAsync(app.Services);
 }
 
+await EnsureRoundOrganizerRoleAssignmentAsync(app);
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -79,6 +82,48 @@ app.UseAuthorization();
 app.MapRazorPages();
 
 app.Run();
+
+static async Task EnsureRoundOrganizerRoleAssignmentAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+    var roleName = configuration["RoundOperations:RoundOrganizerRole"];
+    var bootstrapAdminEmail = configuration["RoundOperations:BootstrapAdminEmail"];
+
+    if (string.IsNullOrWhiteSpace(roleName) || string.IsNullOrWhiteSpace(bootstrapAdminEmail))
+    {
+        return;
+    }
+
+    if (!await roleManager.RoleExistsAsync(roleName))
+    {
+        var createRoleResult = await roleManager.CreateAsync(new IdentityRole(roleName));
+        if (!createRoleResult.Succeeded)
+        {
+            throw new InvalidOperationException($"Failed to create role '{roleName}': {string.Join(", ", createRoleResult.Errors.Select(e => e.Description))}");
+        }
+    }
+
+    var bootstrapAdmin = await userManager.FindByEmailAsync(bootstrapAdminEmail);
+    if (bootstrapAdmin is null)
+    {
+        return;
+    }
+
+    if (await userManager.IsInRoleAsync(bootstrapAdmin, roleName))
+    {
+        return;
+    }
+
+    var addToRoleResult = await userManager.AddToRoleAsync(bootstrapAdmin, roleName);
+    if (!addToRoleResult.Succeeded)
+    {
+        throw new InvalidOperationException($"Failed to add '{bootstrapAdminEmail}' to role '{roleName}': {string.Join(", ", addToRoleResult.Errors.Select(e => e.Description))}");
+    }
+}
 
 static void ValidateProductionConfiguration(WebApplicationBuilder builder)
 {

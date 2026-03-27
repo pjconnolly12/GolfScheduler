@@ -28,6 +28,11 @@ namespace MyApp.Data
                 .HasForeignKey<Player>(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<Player>().ToTable("Players");
+            modelBuilder.Entity<Round>().ToTable("Rounds");
+            modelBuilder.Entity<Entry>().ToTable("Entries");
+            modelBuilder.Entity<DistributionListMember>().ToTable("DistributionListMembers");
+
             // Relationships
             modelBuilder.Entity<Entry>()
                 .HasOne(e => e.Player)
