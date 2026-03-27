@@ -86,7 +86,7 @@ public class CreateModel : PageModel
     private async Task<bool> CanManageRoundsAsync(ApplicationUser user)
     {
         var requiredRole = _roundOperationsOptions.RoundOrganizerRole;
-        if (string.IsNullOrWhiteSpace(requiredRole))
+        if (!_userManager.SupportsUserRole || string.IsNullOrWhiteSpace(requiredRole))
         {
             return false;
         }

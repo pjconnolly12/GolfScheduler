@@ -52,7 +52,8 @@ public class IndexModel : PageModel
             CurrentPlayerId = player?.Id ?? user.PlayerId;
 
             var organizerRole = _roundOperationsOptions.RoundOrganizerRole;
-            CanManuallyAddRounds = !string.IsNullOrWhiteSpace(organizerRole)
+            CanManuallyAddRounds = _userManager.SupportsUserRole
+                && !string.IsNullOrWhiteSpace(organizerRole)
                 && await _userManager.IsInRoleAsync(user, organizerRole);
         }
 
