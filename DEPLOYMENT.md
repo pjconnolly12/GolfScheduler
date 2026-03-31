@@ -16,8 +16,7 @@ Configure the following keys at deploy time:
 
 ### Database
 - `ConnectionStrings__DefaultConnection`
-  - Must be a real SQL Server connection string for your hosted SQL Server instance.
-  - LocalDB values such as `(localdb)` / `mssqllocaldb` are intentionally rejected in Production.
+  - Must be a real PostgreSQL connection string for your hosted PostgreSQL instance.
 
 ### Google OAuth (app sign-in)
 - `Authentication__Google__ClientId`
@@ -38,7 +37,7 @@ Configure the following keys at deploy time:
 ## Example (Linux container/App Service style)
 
 ```bash
-export ConnectionStrings__DefaultConnection="Server=tcp:sql-prod.example.com,1433;Initial Catalog=GolfScheduler;User ID=golf_app;Password=<secure-password>;Encrypt=True;TrustServerCertificate=False"
+export ConnectionStrings__DefaultConnection="Host=db.<project-ref>.supabase.co;Port=5432;Database=postgres;Username=postgres.<project-ref>;Password=<secure-password>;SSL Mode=Require;Trust Server Certificate=true"
 
 export Authentication__Google__ClientId="<google-oauth-client-id>"
 export Authentication__Google__ClientSecret="<google-oauth-client-secret>"
@@ -55,7 +54,7 @@ export RoundNotificationEmail__SiteUrl="https://golf.example.com"
 
 Use your host's secret facility (for example: Azure App Service app settings + Key Vault references, AWS Secrets Manager, GCP Secret Manager, Kubernetes secrets) to provide sensitive values:
 
-- SQL Server connection string
+- PostgreSQL connection string
 - Google OAuth client ID/secret
 - Gmail credentials file mount path and token storage path
 
