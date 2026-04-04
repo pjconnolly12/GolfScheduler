@@ -19,19 +19,27 @@ namespace MyApp.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // PostgreSQL maps DateTime to "timestamp with time zone" by default.
-            // This application stores scheduling values as wall-clock times, so use
-            // "timestamp without time zone" for all DateTime / DateTime? properties.
-            foreach (var property in modelBuilder.Model
-                         .GetEntityTypes()
-                         .SelectMany(entityType => entityType.GetProperties()))
-            {
-                if (property.ClrType == typeof(DateTime)
-                    || property.ClrType == typeof(DateTime?))
-                {
-                    property.SetColumnType("timestamp without time zone");
-                }
-            }
+            // Store user-facing schedule values as wall-clock timestamps.
+            modelBuilder.Entity<Round>()
+                .Property(r => r.Date)
+                .HasColumnType("timestamp without time zone");
+
+            modelBuilder.Entity<Entry>()
+                .Property(e => e.ExpiresAt)
+                .HasColumnType("timestamp without time zone");
+
+            // Store system/audit values in UTC-aware columns.
+            modelBuilder.Entity<Entry>()
+                .Property(e => e.CreatedAt)
+                .HasColumnType("timestamp with time zone");
+
+            modelBuilder.Entity<Round>()
+                .Property(r => r.ReminderSentAtUtc)
+                .HasColumnType("timestamp with time zone");
+
+            modelBuilder.Entity<Entry>()
+                .Property(e => e.MaybeReminderSentAtUtc)
+                .HasColumnType("timestamp with time zone");
 
             //
             // 🔗 Link ApplicationUser ↔ Player
