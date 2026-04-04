@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 ValidateProductionConfiguration(builder);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add services to the container.
 builder.Services.AddRazorPages();
@@ -152,14 +152,6 @@ static void ValidateProductionConfiguration(WebApplicationBuilder builder)
     RequireValue(configuration, "RoundNotificationEmail:FromAddress", missing);
     RequireValue(configuration, "RoundNotificationEmail:ApplicationName", missing);
     RequireValue(configuration, "RoundNotificationEmail:SiteUrl", missing);
-
-    var connectionString = configuration.GetConnectionString("DefaultConnection");
-    if (!string.IsNullOrWhiteSpace(connectionString)
-        && (connectionString.Contains("(localdb)", StringComparison.OrdinalIgnoreCase)
-            || connectionString.Contains("mssqllocaldb", StringComparison.OrdinalIgnoreCase)))
-    {
-        missing.Add("ConnectionStrings__DefaultConnection (must reference a real SQL Server instance, not LocalDB)");
-    }
 
     if (missing.Count == 0)
     {

@@ -82,7 +82,7 @@ Post-deploy checks:
 
 ### What must be backed up
 
-1. Primary SQL Server database (`GolfScheduler` schema + data).
+1. Primary PostgreSQL database (`GolfScheduler` schema + data).
 2. `/opt/golfscheduler/state/google-token` (Gmail token cache).
 3. Secret material managed outside source control (credential JSON and secret-manager values).
 
@@ -94,7 +94,7 @@ Post-deploy checks:
 
 ### Restore notes
 
-1. Restore SQL database to target point-in-time.
+1. Restore PostgreSQL database to target point-in-time.
 2. Restore `/opt/golfscheduler/state/google-token` to preserve Gmail refresh tokens.
 3. Rehydrate secrets and env vars.
 4. Re-run `docker compose ... up -d web` and verify health.
